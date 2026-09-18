@@ -80,3 +80,9 @@ Start with the guide that matches your development environment:
 
 | [Linux](./infomaniak-build-tools/linux/Readme.md) | [macOS](./infomaniak-build-tools/macos/Readme.md) | [Windows](./infomaniak-build-tools/windows/Readme.md) |
 |---------------------------------------------------|---------------------------------------------------|-------------------------------------------------------|
+
+For Arch Linux, CachyOS, and Omarchy, the native host-ABI workflow is
+documented in
+[`infomaniak-build-tools/linux/arch-native/Readme.md`](./infomaniak-build-tools/linux/arch-native/Readme.md).
+It builds `RelWithDebInfo`, keeps debug symbols separate, and installs a
+user-systemd-only runtime with rollback support.
