@@ -110,6 +110,8 @@ lifecycle=systemd-user-only; native desktop autostart removed by source patch
 runtime_pruned=static archives, public headers, debug sections, crashpad helper
 EOF
 sha256sum "$RUNTIME_DIR/bin/kDrive" "$RUNTIME_DIR/bin/kDrive_client" "$RUNTIME_DIR/bin/sync-exclude.lst" "$RUNTIME_DIR/kdrive-install.sh" "$RUNTIME_DIR/systemd/kdrive.service" >"$RUNTIME_DIR/SHA256SUMS"
-tar -C "$OUTPUT_DIR" -czf "$OUTPUT_DIR/kdrive-${version}-native-arch.tar.gz" "$(basename "$RUNTIME_DIR")"
-tar -C "$OUTPUT_DIR" -czf "$OUTPUT_DIR/kdrive-${version}-native-arch-debug.tar.gz" "$(basename "$SYMBOL_DIR")"
+tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+  -czf "$OUTPUT_DIR/kdrive-${version}-native-arch.tar.gz" "$(basename "$RUNTIME_DIR")"
+tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+  -czf "$OUTPUT_DIR/kdrive-${version}-native-arch-debug.tar.gz" "$(basename "$SYMBOL_DIR")"
 printf 'kDrive build complete: %s\n' "$OUTPUT_DIR/kdrive-${version}-native-arch.tar.gz"
