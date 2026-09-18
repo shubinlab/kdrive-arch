@@ -7,14 +7,15 @@ assignees: ''
 
 ---
 
-## ⚠️ ✨ Feature Requests
+## Problem
 
-Thank you for your interest in improving this project! 🙌
+What user problem should this package solve?
 
-⚠️ We don’t handle feature requests in this issue tracker.
+## Proposed change
 
-👉 Please share your idea here instead:  
-**[Submit your feedback (EN)](https://feedback.userreport.com/652ad8f0-84c8-4a21-9e31-7a8bd7134f46)**  
-**[Soumettre une demande (FR)](https://feedback.userreport.com/fe6ca4b6-5812-4f39-8ca6-5f2300aecda6)**
+Describe the smallest useful change to the package, installer, service, or
+rollback path.
 
-Thanks for your understanding 💙
+## Alternatives
+
+What works today, and why is it not enough?

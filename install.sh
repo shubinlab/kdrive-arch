@@ -58,9 +58,20 @@ preflight() {
     *' arch '*|*' cachyos '*|*' omarchy '*) ;;
     *) die 'this installer supports Arch Linux, CachyOS, and Omarchy only' ;;
   esac
-  for command_name in curl makepkg pacman sha256sum tar systemctl; do
+  for command_name in sha256sum systemctl; do
     need_command "$command_name"
   done
+  case "$ACTION" in
+    install)
+      for command_name in curl makepkg pacman tar; do need_command "$command_name"; done
+      ;;
+    dry-run)
+      for command_name in curl tar; do need_command "$command_name"; done
+      ;;
+    rollback|uninstall|verify)
+      need_command pacman
+      ;;
+  esac
   if [[ "$ACTION" == install || "$ACTION" == rollback || "$ACTION" == uninstall || "$ACTION" == verify ]]; then
     systemctl --user show-environment >/dev/null 2>&1 ||
       die 'no user systemd session is available; run this from the graphical session'

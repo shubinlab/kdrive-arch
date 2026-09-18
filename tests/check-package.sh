@@ -4,6 +4,7 @@ set -Eeuo pipefail
 root="${1:-}"
 [[ -n "$root" && -d "$root" ]] || { printf 'usage: %s <runtime-root>\n' "$0" >&2; exit 2; }
 root="$(cd -- "$root" && pwd -P)"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
 die() { printf 'kdrive-package-check: %s\n' "$*" >&2; exit 1; }
 [[ -x "$root/bin/kDrive" ]] || die 'missing bin/kDrive'
@@ -23,9 +24,15 @@ for binary in "$root/bin/kDrive" "$root/bin/kDrive_client"; do
   env -u LD_LIBRARY_PATH ldd "$binary" | grep -q 'not found' && die "missing ELF dependency in $binary"
 done
 
-"$(dirname -- "$0")/tests/test-desktop-contract.sh" "$root/share/applications/kDrive_client.desktop"
+"$script_dir/test-desktop-contract.sh" "$root/share/applications/kDrive_client.desktop"
 desktop-file-validate "$root/share/applications/kDrive_client.desktop"
-systemd-analyze verify "$root/systemd/kdrive.service"
+grep -q '^ExecStart=%h/.local/bin/kDrive$' "$root/systemd/kdrive.service" ||
+  die 'bundle unit must keep the user launcher as the only owner'
+unit_for_verify="$(mktemp --suffix=.service)"
+trap 'rm -f -- "$unit_for_verify"' EXIT
+sed -e '/^ExecStartPre=/d' -e 's|^ExecStart=.*|ExecStart=/bin/true|' \
+  "$root/systemd/kdrive.service" >"$unit_for_verify"
+systemd-analyze verify "$unit_for_verify"
 if grep -Eq '  /|  \.\./' "$root/SHA256SUMS"; then
   die 'SHA256SUMS contains an absolute or parent-relative build path'
 fi

@@ -9,12 +9,14 @@ KDRIVE_CONAN_VERSION="${KDRIVE_CONAN_VERSION:-2.32.0}"
 
 die() { printf 'kdrive-build: %s\n' "$*" >&2; exit 1; }
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Usage: build-package.sh --source <official-3.8.7-checkout> --output <directory>
 
-The source checkout must include git submodules. Conan 2, CMake, Clang, and
-objcopy are required. The output directory receives the runtime bundle and a
-separate debug-symbol bundle; no system files are changed.
+The source checkout must include git submodules. CMake, Clang, objcopy, and
+Python are required; Conan $KDRIVE_CONAN_VERSION is bootstrapped in the output
+directory when it is not already installed (python-pip or uv is needed for the
+bootstrap). The output directory receives the
+runtime bundle and a separate debug-symbol bundle; no system files are changed.
 EOF
 }
 
@@ -30,7 +32,7 @@ done
 [[ -n "$SOURCE_DIR" && -n "$OUTPUT_DIR" ]] || { usage >&2; exit 2; }
 [[ -e "$SOURCE_DIR/.git" ]] || die 'source must be a git checkout with submodules'
 [[ -f "$SOURCE_DIR/src/3rdparty/keychain/src/keychain_linux.cpp" ]] || die 'submodules are not initialized'
-for command_name in cmake python objcopy clang clang++ patch; do
+for command_name in cmake python objcopy strip clang clang++ patch; do
   command -v "$command_name" >/dev/null 2>&1 || die "required command not found: $command_name"
 done
 
@@ -47,14 +49,23 @@ else
   if [[ ! -x "$CONAN_VENV/bin/conan" ]]; then
     python -m venv "$CONAN_VENV" ||
       die "cannot create isolated Conan environment; install python-pip"
-    "$CONAN_VENV/bin/python" -m pip install \
-      --disable-pip-version-check --no-input --upgrade \
-      "conan==$KDRIVE_CONAN_VERSION"
+    if "$CONAN_VENV/bin/python" -m pip --version >/dev/null 2>&1; then
+      "$CONAN_VENV/bin/python" -m pip install \
+        --disable-pip-version-check --no-input --upgrade \
+        "conan==$KDRIVE_CONAN_VERSION"
+    elif command -v uv >/dev/null 2>&1; then
+      uv pip install --python "$CONAN_VENV/bin/python" \
+        "conan==$KDRIVE_CONAN_VERSION"
+    else
+      die 'isolated Python has no pip; install python-pip or uv'
+    fi
   fi
   CONAN_BIN="$CONAN_VENV/bin/conan"
 fi
 [[ -x "$CONAN_BIN" ]] || die "Conan $KDRIVE_CONAN_VERSION is unavailable"
 export CONAN_HOME
+[[ -f "$CONAN_HOME/profiles/default" ]] ||
+  "$CONAN_BIN" profile detect --force >/dev/null
 
 git -C "$SOURCE_DIR" diff --quiet || die 'source checkout has local changes; use a clean tag checkout'
 git -C "$SOURCE_DIR" diff --cached --quiet || die 'source checkout has staged changes; use a clean tag checkout'
@@ -75,11 +86,36 @@ patch --directory="$WORKTREE_DIR" --batch --forward --strip=1 \
 
 export KDRIVE_USE_SYSTEM_QT=1
 export KDRIVE_OUTPUT_DIR="$CONAN_OUTPUT"
+export CC=clang
+export CXX=clang++
+CLANG_VERSION="$(clang -dumpversion | cut -d. -f1)"
+[[ "$CLANG_VERSION" =~ ^[0-9]+$ ]] || die "cannot detect Clang version"
+# makepkg may inject GCC LTO flags. Dependencies and the final binaries are
+# built with Clang here, so keep this reproducible across Arch toolchains.
+CFLAGS="${CFLAGS:-}"
+CFLAGS="${CFLAGS//-flto=auto/}"
+CFLAGS="${CFLAGS//-flto/}"
+CXXFLAGS="${CXXFLAGS:-}"
+CXXFLAGS="${CXXFLAGS//-flto=auto/}"
+CXXFLAGS="${CXXFLAGS//-flto/}"
+LDFLAGS="${LDFLAGS:-}"
+LDFLAGS="${LDFLAGS//-flto=auto/}"
+LDFLAGS="${LDFLAGS//-flto/}"
+# Keep local checkout and Conan cache paths out of shipped ELF metadata.  The
+# debug bundle still contains symbols, but points at a stable source prefix.
+SOURCE_MAP="-ffile-prefix-map=$OUTPUT_DIR=/usr/src/kdrive-build -fdebug-prefix-map=$OUTPUT_DIR=/usr/src/kdrive-build"
+CFLAGS+=" $SOURCE_MAP"
+CXXFLAGS+=" $SOURCE_MAP"
+export CFLAGS CXXFLAGS LDFLAGS
 "$CONAN_BIN" remote add localrecipes "$WORKTREE_DIR/infomaniak-build-tools/conan" --force >/dev/null
 "$CONAN_BIN" remote add conancenter https://center2.conan.io --force >/dev/null
 "$CONAN_BIN" install "$WORKTREE_DIR" --output-folder "$CONAN_OUTPUT" --build=missing \
   -r=localrecipes -r=conancenter \
-  -s:h build_type=RelWithDebInfo -s:b build_type=RelWithDebInfo
+  -s:h build_type=RelWithDebInfo -s:b build_type=RelWithDebInfo \
+  -s:h compiler=clang -s:b compiler=clang \
+  -s:h compiler.version="$CLANG_VERSION" -s:b compiler.version="$CLANG_VERSION" \
+  -s:h compiler.cppstd=gnu20 -s:b compiler.cppstd=gnu20 \
+  -s:h compiler.libcxx=libstdc++11 -s:b compiler.libcxx=libstdc++11
 
 rm -rf -- "$BUILD_DIR"
 cmake -S "$WORKTREE_DIR" -B "$BUILD_DIR" \
@@ -119,8 +155,10 @@ sed -i \
 for library in "$CONAN_OUTPUT"/lib*.so*; do
   target="$RUNTIME_DIR/lib/$(basename -- "$library")"
   cp -a -- "$library" "$target"
-  strip --strip-unneeded "$target"
 done
+while IFS= read -r -d '' library; do
+  strip --strip-unneeded "$library"
+done < <(find "$RUNTIME_DIR/lib" -type f -name 'lib*.so*' -print0)
 for binary in kDrive kDrive_client; do
   objcopy --only-keep-debug "$RUNTIME_DIR/bin/$binary" "$SYMBOL_DIR/$binary.dbg"
   objcopy --strip-unneeded "$RUNTIME_DIR/bin/$binary"

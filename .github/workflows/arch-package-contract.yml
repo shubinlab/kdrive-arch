@@ -7,6 +7,8 @@ on:
       - '.SRCINFO'
       - 'build/**'
       - 'tests/**'
+      - 'README.md'
+      - 'install.sh'
       - 'kdrive-native-arch.in'
       - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
@@ -16,6 +18,8 @@ on:
       - '.SRCINFO'
       - 'build/**'
       - 'tests/**'
+      - 'README.md'
+      - 'install.sh'
       - 'kdrive-native-arch.in'
       - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
@@ -35,6 +39,8 @@ jobs:
             tests/test-desktop-contract.sh \
             tests/test-build-output-contract.sh \
             tests/test-pkgbuild-contract.sh \
+            tests/test-repository-contract.sh \
+            tests/test-installer-contract.sh \
             build/build-package.sh \
             build/install.sh
           tests/test-pkgbuild-contract.sh PKGBUILD

@@ -7,28 +7,23 @@ assignees: ''
 
 ---
 
-*Note: Please write your issue only in english*
+## What happened?
 
-**Description**
-A clear and concise description of what the bug is.
+## Reproduce
 
-**Steps to reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+1. Distribution and architecture:
+2. Install or update command:
+3. Exact command or action:
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected behavior
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Safe diagnostics
 
-**Logs**
-"Open debugging folder" in "Preferences"
-We need you to enable "Extended Full Log" in "Debugging information"
-*Please note that the name of your files will appear in this log.*
+Paste sanitized output from:
 
-**Additional context**
-Add any other context about the problem here.
+```text
+systemctl --user status kdrive.service
+journalctl --user -u kdrive.service -b --no-pager
+```
+
+Do not attach credentials, account data, sync paths, or raw coredumps.

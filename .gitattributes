@@ -1,5 +1,4 @@
-.tag                    export-subst
-.gitignore              export-ignore
-.gitattributes          export-ignore
-.commit-template        export-ignore
-binary/                 export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+.github/ export-ignore
+tests/ export-ignore

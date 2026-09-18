@@ -1,6 +1,6 @@
 pkgname=kdrive-native-arch
 pkgver=3.8.7.1
-pkgrel=9
+pkgrel=10
 pkgdesc='Native Arch Linux/CachyOS kDrive desktop client'
 arch=('x86_64')
 options=('!strip' '!debug')
