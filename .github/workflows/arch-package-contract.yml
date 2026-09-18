@@ -45,7 +45,9 @@ jobs:
             build/install.sh
           tests/test-pkgbuild-contract.sh PKGBUILD
           tests/test-build-output-contract.sh build/build-package.sh
-          makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
       - name: Check OAuth desktop contract
         run: |
           printf '%s\n' \
