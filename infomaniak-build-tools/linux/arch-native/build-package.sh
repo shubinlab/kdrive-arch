@@ -27,7 +27,7 @@ while (($#)); do
 done
 
 [[ -n "$SOURCE_DIR" && -n "$OUTPUT_DIR" ]] || { usage >&2; exit 2; }
-[[ -d "$SOURCE_DIR/.git" ]] || die 'source must be a git checkout with submodules'
+[[ -e "$SOURCE_DIR/.git" ]] || die 'source must be a git checkout with submodules'
 [[ -f "$SOURCE_DIR/src/3rdparty/keychain/src/keychain_linux.cpp" ]] || die 'submodules are not initialized'
 for command_name in cmake conan objcopy clang clang++ patch; do
   command -v "$command_name" >/dev/null 2>&1 || die "required command not found: $command_name"
