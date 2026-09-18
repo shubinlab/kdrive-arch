@@ -75,8 +75,8 @@
 
 - [x] Run shell syntax, all contract/red-team tests, source archive inspection,
   `makepkg --nobuild --nodeps --cleanbuild`, and `git diff --check`.
-- [x] Run the full native package build only if code affecting the build path
-  changes; otherwise reuse the already verified upstream/build recipe and
-  document the exact boundary.
-- [ ] Commit focused changes, push a new `kdrive-arch-*` tag without moving old
+- [x] Reuse the previously verified full native build for the unchanged
+  upstream/build recipe; verify the current rename and packaging boundary with
+  `makepkg --nobuild --nodeps --cleanbuild` and the complete contract suite.
+- [x] Commit focused changes, push a new `kdrive-arch-*` tag without moving old
   rollback tags, and verify the release assets plus green CI.
