@@ -208,6 +208,11 @@ void Handler::init(AppType appType, int breadCrumbsSize) {
 
     _appType = appType;
 
+#if defined(KDRIVE_DISABLE_SENTRY)
+    _instance->_isSentryActivated = false;
+    return;
+#endif
+
     // For debugging: if the following environment variable is set, the crash event will be printed into a debug file
     bool isSet = false;
     if (CommonUtility::envVarValue("KDRIVE_DEBUG_SENTRY_CRASH_CB", isSet); isSet) {
@@ -310,6 +315,7 @@ void Handler::init(AppType appType, int breadCrumbsSize) {
 void Handler::setAuthenticatedUser(const SentryUser &user) {
     std::scoped_lock lock(_mutex);
     _authenticatedUser = user;
+    if (!_isSentryActivated) return;
     updateEffectiveSentryUser();
 }
 
@@ -349,6 +355,7 @@ void Handler::setMinUploadIntervalOnRateLimit(int minUploadIntervalOnRateLimit) 
 }
 
 void Handler::setTag(const std::string &key, const std::string &value) {
+    if (!_isSentryActivated) return;
     sentry_set_tag(key.c_str(), value.c_str());
 }
 
@@ -428,6 +435,7 @@ void Handler::escalateSentryEvent(SentryEvent &event) const {
 }
 
 void Handler::updateEffectiveSentryUser(const SentryUser &user) {
+    if (!_isSentryActivated) return;
     if (_globalConfidentialityLevel == _lastConfidentialityLevel && user.isDefault()) return;
     _lastConfidentialityLevel = user.isDefault() ? _globalConfidentialityLevel : sentry::ConfidentialityLevel::Specific;
 

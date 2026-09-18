@@ -7,6 +7,11 @@ if(APPLE)
     enable_language(OBJCXX)
 endif()
 
+option(KDRIVE_DISABLE_SENTRY "Disable Sentry and Crashpad initialization" OFF)
+if(KDRIVE_DISABLE_SENTRY)
+    add_compile_definitions(KDRIVE_DISABLE_SENTRY)
+endif()
+
 # Redefine compiler predefined macros to uniformize their format.
 # Source:
 # https://web.archive.org/web/20140625123925/http://nadeausoftware.com/articles/2012/01/c_c_tip_how_use_compiler_predefined_macros_detect_operating_system
@@ -341,7 +346,9 @@ elseif(BUILD_CLIENT)
         message(STATUS "sentry dll found in ${SENTRY_SHARED_LIBRARY}")
 
         # Crashpad_handler
-        if(TARGET sentry_crashpad::crashpad_handler)
+        if(KDRIVE_DISABLE_SENTRY)
+            message(STATUS "Crashpad handler disabled by KDRIVE_DISABLE_SENTRY")
+        elseif(TARGET sentry_crashpad::crashpad_handler)
             get_target_property(CRASHPAD_HANDLER_PROGRAM sentry_crashpad::crashpad_handler IMPORTED_LOCATION)
             message(STATUS "crashpad_handler found in ${CRASHPAD_HANDLER_PROGRAM}")
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -376,7 +383,19 @@ if(UNIX AND NOT APPLE)
             include("${CONAN_GEN_DIR}/ConanNormalizeVars.cmake")
         endif()
 
-        # We use <lib>_LIB_DIRS which is normalized by Conan to match the current build type
+        # We use <lib>_LIB_DIRS which is normalized by Conan to match the current build type.
+        # Native Arch builds deliberately use the host OpenSSL ABI; do not copy
+        # the unavailable Conan OpenSSL package into the bundle in that mode.
+        if(KDRIVE_USE_SYSTEM_QT)
+            set(KDRIVE_OPENSSL_RUNTIME_LIBS)
+        else()
+            set(KDRIVE_OPENSSL_RUNTIME_LIBS
+                "${openssl_LIB_DIRS}/libcrypto.so"
+                "${openssl_LIB_DIRS}/libcrypto.so.3"
+                "${openssl_LIB_DIRS}/libssl.so"
+                "${openssl_LIB_DIRS}/libssl.so.3"
+            )
+        endif()
         file(COPY
             # log4cplus
             "${log4cplus_LIB_DIRS}/liblog4cplus.so"
@@ -385,11 +404,8 @@ if(UNIX AND NOT APPLE)
             "${xxhash_LIB_DIRS}/libxxhash.so"
             "${xxhash_LIB_DIRS}/libxxhash.so.0"
             "${xxhash_LIB_DIRS}/libxxhash.so.0.8.2"
-            # OpenSSL
-            "${openssl_LIB_DIRS}/libcrypto.so"
-            "${openssl_LIB_DIRS}/libcrypto.so.3"
-            "${openssl_LIB_DIRS}/libssl.so"
-            "${openssl_LIB_DIRS}/libssl.so.3"
+            # OpenSSL (empty for native Arch/system-ABI builds)
+            ${KDRIVE_OPENSSL_RUNTIME_LIBS}
             # sentry
             "${sentry_LIB_DIRS}/libsentry.so"
             # Poco

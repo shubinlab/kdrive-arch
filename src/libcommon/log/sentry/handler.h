@@ -105,7 +105,13 @@ class Handler {
 
         void setDistributionChannel(DistributionChannel channel);
         void setAppUUID(std::string appUUID);
-        void setIsSentryActivated(bool isSentryActivated) { _isSentryActivated = isSentryActivated; }
+        void setIsSentryActivated(bool isSentryActivated) {
+#if defined(KDRIVE_DISABLE_SENTRY)
+            _isSentryActivated = false;
+#else
+            _isSentryActivated = isSentryActivated;
+#endif
+        }
 
         // Returns the file path where non-crash events of type `appType` are written locally.
         static SyncPath getEventFilePath(const AppType appType) { return getEventFilePath(appType, false); }
@@ -139,7 +145,9 @@ class Handler {
         sentry::ConfidentialityLevel _lastConfidentialityLevel = sentry::ConfidentialityLevel::None;
 
         void setTag(const std::string &key, const std::string &value);
-        void removeTag(const std::string &key) { sentry_remove_tag(key.c_str()); }
+        void removeTag(const std::string &key) {
+            if (_isSentryActivated) sentry_remove_tag(key.c_str());
+        }
         // Convert a `SentryUser` structure to a `sentry_value_t` that can safely be passed to
         // `sentry_set_user(sentry_value_t)`
         [[nodiscard]] sentry_value_t toSentryValue(const SentryUser &user) const;

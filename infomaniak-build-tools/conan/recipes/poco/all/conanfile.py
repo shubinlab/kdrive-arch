@@ -117,6 +117,14 @@ class PocoConan(ConanFile):
         foundation_external_dependencies = self._poco_component_tree["Foundation"].external_dependencies
         self._poco_component_tree["Foundation"] = self._poco_component_tree["Foundation"]._replace(external_dependencies = list(map(lambda x: 'pcre2::pcre2' if x == 'pcre::pcre' else x, foundation_external_dependencies)))
 
+        # Native Arch builds must keep system libcurl/ngtcp2 and OpenSSL on the
+        # same ABI.  Use the host OpenSSL targets instead of Conan's pinned
+        # OpenSSL package in this mode.
+        if os.getenv("KDRIVE_USE_SYSTEM_QT") == "1":
+            self._poco_component_tree["Crypto"] = self._poco_component_tree["Crypto"]._replace(
+                external_dependencies=[]
+            )
+
 
     def layout(self):
         cmake_layout(self, src_folder="src")
@@ -130,7 +138,7 @@ class PocoConan(ConanFile):
         if self.options.enable_netssl or self.options.enable_crypto:
             if self.settings.os == "Macos":
                 self.requires("openssl-macos/3.2.4", options={ "shared": True })
-            else:
+            elif os.getenv("KDRIVE_USE_SYSTEM_QT") != "1":
                 self.requires("openssl/3.2.4", options={ "shared": True })
 
     def package_id(self):
@@ -191,6 +199,14 @@ class PocoConan(ConanFile):
         deps.generate()
 
     def build(self):
+        # Poco 1.13.3 adds PCRE2 Unicode objects even in unbundled mode. With
+        # current PCRE2 this duplicates symbols already provided by the Conan
+        # library and fails to link under Clang 22.
+        foundation_cmake = os.path.join(self.source_folder, "Foundation", "CMakeLists.txt")
+        replace_in_file(self, foundation_cmake,
+            "\t#HACK: Unicode.cpp requires functions from these files. The can't be taken from the library\n\tPOCO_SOURCES(SRCS RegExp\n\t\tsrc/pcre2_ucd.c\n\t\tsrc/pcre2_tables.c\n\t)\n",
+            "\t# PCRE2 Unicode objects are provided by the external PCRE2 package.\n")
+
         # Remove debug suffix from library names when sharedlibrary_debug_suffix is False
         if not self.options.get_safe("sharedlibrary_debug_suffix", True):
             platform_specific_cmake = os.path.join(self.source_folder, "cmake", "DefinePlatformSpecifc.cmake")
@@ -242,6 +258,8 @@ class PocoConan(ConanFile):
 
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.components["poco_foundation"].system_libs.extend(["pthread", "dl", "rt"])
+            if os.getenv("KDRIVE_USE_SYSTEM_QT") == "1" and self.options.enable_crypto:
+                self.cpp_info.components["poco_crypto"].system_libs.extend(["ssl", "crypto"])
 
         if self.options.log_debug:
             self.cpp_info.components["poco_foundation"].defines.append("POCO_LOG_DEBUG")

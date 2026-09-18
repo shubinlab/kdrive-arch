@@ -223,6 +223,19 @@ bool Utility::setLaunchOnStartup(const std::string &appName, const std::string &
         }
         const SyncPath appimageDir{CommonUtility::envVarValue("APPIMAGE")};
         LOGW_DEBUG(logger(), L"APPIMAGE: " << Utility::formatSyncPath(appimageDir));
+        // Native Arch packages are launched by the user systemd unit.  Do not
+        // leave a second, malformed desktop-autostart owner behind when the
+        // APPIMAGE variable is absent.
+        if (appimageDir.empty()) {
+            autoStartFile.close();
+            std::error_code ec;
+            std::filesystem::remove(userAutoStartFilePath, ec);
+            if (ec) {
+                LOGW_WARN(logger(), L"Could not remove native autostart desktop file: " << Utility::formatSyncPath(userAutoStartFilePath));
+                return false;
+            }
+            return true;
+        }
         autoStartFile << "[Desktop Entry]" << std::endl;
         autoStartFile << "Name=" << guiName << std::endl;
         autoStartFile << "GenericName=File Synchronizer" << std::endl;

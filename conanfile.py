@@ -167,7 +167,7 @@ class KDriveDesktop(ConanFile):
         # but since we build openssl two times (for x86_64 and arm64) in single arch and then merge them, we need to add zlib in 'armv8|x86_64' arch mode.
         if self.settings.os == "Macos":
             self.requires("openssl-macos/3.2.4", options={ "shared": True }) # on macOS => Using the local recipe, using the openssl universal build script.
-        else:
+        elif os.getenv("KDRIVE_USE_SYSTEM_QT") != "1":
             self.requires("openssl/3.2.4", options={ "shared": True }) # Otherwise, using the conan center recipe.
 
         self.requires("sentry/0.7.10", options={ "shared": True, "qt_version": qt_version })

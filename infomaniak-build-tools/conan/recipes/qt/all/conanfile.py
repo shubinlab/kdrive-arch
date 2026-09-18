@@ -34,6 +34,10 @@ class QtConan(ConanFile):
         "verbose": False
     }
 
+    @property
+    def _use_system_qt(self):
+        return os.getenv("KDRIVE_USE_SYSTEM_QT") == "1"
+
     class _InstallerIndexParser(HTMLParser):
         def __init__(self):
             super().__init__()
@@ -262,6 +266,10 @@ class QtConan(ConanFile):
                 self.options.qt_login_type = "cli"
 
     def validate(self):
+        if self._use_system_qt:
+            self.output.warning("Using the host Arch Qt installation instead of the Qt Online Installer.")
+            return
+
         if not self.version.startswith("6."):
             raise ConanInvalidConfiguration("This recipe only supports Qt 6.x versions.")
 
@@ -367,6 +375,9 @@ class QtConan(ConanFile):
         pass
 
     def build(self):
+        if self._use_system_qt:
+            return
+
         self.output.highlight("Launching Qt installer...")
         installer_path = self._get_executable_path(self._download_installer())
 
@@ -470,6 +481,9 @@ class QtConan(ConanFile):
             raise ConanInvalidConfiguration(f"Unsupported OS: {self.settings.os}")
 
     def package(self):
+        if self._use_system_qt:
+            return
+
         self.output.highlight("This step can take a while, please be patient...")
 
         copy(self, "*",
@@ -512,6 +526,13 @@ class QtConan(ConanFile):
         self.cpp_info.set_property("cmake_file_name", "Qt6")
         self.cpp_info.set_property("cmake_build_modules", [ pjoin(self.package_folder, "lib", "cmake", "Qt6", "Qt6Config.cmake") ])
         self.cpp_info.set_property("cmake_find_mode", "none")
+
+        if self._use_system_qt:
+            for env in (self.runenv_info, self.buildenv_info):
+                env.prepend_path("CMAKE_PREFIX_PATH", "/usr")
+            self.cpp_info.includedirs = []
+            self.cpp_info.bindirs = []
+            return
 
         for env in (self.runenv_info, self.buildenv_info):
             env.prepend_path("CMAKE_PREFIX_PATH", self.package_folder)

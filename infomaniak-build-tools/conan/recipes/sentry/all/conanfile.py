@@ -106,10 +106,12 @@ class SentryNativeConan(ConanFile):
         cache_variables = {
             "SENTRY_INTEGRATION_QT": "YES",
             "SENTRY_BACKEND": "crashpad",
-            "CMAKE_PREFIX_PATH": qt.package_folder,
+            "CMAKE_PREFIX_PATH": "/usr" if os.getenv("KDRIVE_USE_SYSTEM_QT") == "1" else qt.package_folder,
             "SENTRY_BUILD_TESTS": "OFF",
             "SENTRY_BUILD_EXAMPLES": "OFF",
             "SENTRY_BUILD_SHARED_LIBS": "ON" if self.options.shared else "OFF",
+            # Crashpad 0.7.10 relies on an indirect uint64_t include that Clang 22 no longer supplies.
+            "CMAKE_CXX_FLAGS": "-include cstdint",
         }
         if self.settings.os == "Linux":
             cache_variables["SENTRY_TRANSPORT"] = "curl"

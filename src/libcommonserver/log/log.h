@@ -27,7 +27,7 @@
 
 namespace KDC {
 
-#ifdef NDEBUG
+#if defined(NDEBUG) && !defined(KDRIVE_DISABLE_SENTRY)
 #define LOG_DEBUG(logger, logEvent)                                                               \
     {                                                                                             \
         CustomLogStream customLogStream_;                                                         \
