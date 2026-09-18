@@ -75,6 +75,8 @@ cmake -S "$WORKTREE_DIR" -B "$BUILD_DIR" \
   -DKDRIVE_THEME_DIR="$WORKTREE_DIR/infomaniak" \
   -DCONAN_DEP_DIR="$CONAN_OUTPUT" \
   -DCMAKE_INSTALL_RPATH='$ORIGIN/../lib' \
+  -DCMAKE_EXE_LINKER_FLAGS='-Wl,--disable-new-dtags' \
+  -DCMAKE_SHARED_LINKER_FLAGS='-Wl,--disable-new-dtags' \
   -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
   -DCMAKE_TOOLCHAIN_FILE="$CONAN_OUTPUT/build/RelWithDebInfo/generators/conan_toolchain.cmake"
 cmake --build "$BUILD_DIR" --parallel "${KDRIVE_BUILD_JOBS:-2}"

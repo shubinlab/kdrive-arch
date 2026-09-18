@@ -1,6 +1,6 @@
 pkgname=kdrive-native-arch
 pkgver=3.8.7.1
-pkgrel=4
+pkgrel=5
 pkgdesc='Native Arch Linux/CachyOS kDrive desktop client'
 arch=('x86_64')
 url='https://github.com/shubinlab/kdrive-arch'

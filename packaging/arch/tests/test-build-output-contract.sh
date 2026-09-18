@@ -15,3 +15,7 @@ grep -q 'sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst' "$builder"
   printf 'SHA256SUMS must use relative runtime paths\n' >&2
   exit 1
 }
+grep -q -- "-DCMAKE_EXE_LINKER_FLAGS='-Wl,--disable-new-dtags'" "$builder" || {
+  printf 'executable linker must emit transitive DT_RPATH\n' >&2
+  exit 1
+}

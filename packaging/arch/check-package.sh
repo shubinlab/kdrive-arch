@@ -18,7 +18,9 @@ forbidden="$(find "$root" -type f \( -name '*.a' -o -path '*/include/*' -o -name
 for binary in "$root/bin/kDrive" "$root/bin/kDrive_client"; do
   readelf -S "$binary" | grep -Eq '\.(debug_info|debug_line|debug_str)([[:space:]]|$)' &&
     die "debug sections remain in $binary"
-  ldd "$binary" | grep -q 'not found' && die "missing ELF dependency in $binary"
+  readelf -d "$binary" | grep -Eq 'RPATH.*\$ORIGIN/\.\./lib' ||
+    die "bundled ELF must carry a transitive runtime RPATH: $binary"
+  env -u LD_LIBRARY_PATH ldd "$binary" | grep -q 'not found' && die "missing ELF dependency in $binary"
 done
 
 "$(dirname -- "$0")/tests/test-desktop-contract.sh" "$root/share/applications/kDrive_client.desktop"
