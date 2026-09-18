@@ -303,13 +303,18 @@ verify_runtime() {
 }
 
 rollback() {
-  local backup package
+  local backup package previous_name current_name
   backup="$(latest_backup)"
   [[ -n "$backup" ]] || die 'no rollback state exists'
   backup="$BACKUP_ROOT/$backup"
   package="$(cat "$STATE_ROOT/previous-package" 2>/dev/null || true)"
   if [[ -n "$package" && -f "$package" ]]; then
     systemctl --user stop kdrive.service >/dev/null 2>&1 || true
+    previous_name="$(cat "$STATE_ROOT/previous-package-name" 2>/dev/null || true)"
+    current_name="$(installed_package_name || true)"
+    if [[ -n "$previous_name" && -n "$current_name" && "$previous_name" != "$current_name" ]]; then
+      run_pacman -Rdd "$current_name"
+    fi
     run_pacman -U "$package"
   fi
   restore_user_state "$backup"

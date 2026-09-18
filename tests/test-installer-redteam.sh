@@ -90,6 +90,10 @@ set -Eeuo pipefail
 printf '%s\n' "$*" >>"$KDRIVE_REDTEAM_ROOT/pacman-log"
 case "$1" in
   -Q)
+    if [[ "${KDRIVE_ROLLBACK_MODE:-0}" == 1 && "${2:-}" == kdrive-arch ]]; then
+      printf 'kdrive-arch 3.8.7.1-13\n'
+      exit 0
+    fi
     if [[ "${KDRIVE_LEGACY_MODE:-0}" == 1 && "${2:-}" == kdrive-native-arch ]]; then
       printf 'kdrive-native-arch 3.8.7.1-12\n'
       exit 0
@@ -200,6 +204,15 @@ grep -qx 'old-autostart' "$config_dir/autostart/kDrive.desktop" || {
 }
 grep -q -- '-U.*kdrive-native-arch-' "$tmp_root/pacman-log" || {
   printf 'failed package migration did not attempt legacy package restore\n' >&2
+  exit 1
+}
+
+KDRIVE_ROLLBACK_MODE=1 PATH="$bin_dir:/usr/bin:/bin" \
+  HOME="$home_dir" XDG_CONFIG_HOME="$config_dir" XDG_STATE_HOME="$state_dir" \
+  KDRIVE_INSTALL_ROOT="$tmp_root/install-state-legacy" KDRIVE_REDTEAM_ROOT="$tmp_root" \
+  TMPDIR="$tmp_root" bash "$installer" --rollback >/dev/null
+grep -q -- '-Rdd.*kdrive-arch' "$tmp_root/pacman-log" || {
+  printf 'rollback did not remove the renamed package before restoring legacy\n' >&2
   exit 1
 }
 
