@@ -1,6 +1,6 @@
 pkgname=kdrive-native-arch
 pkgver=3.8.7.1
-pkgrel=1
+pkgrel=2
 pkgdesc='Native Arch Linux/CachyOS kDrive desktop client'
 arch=('x86_64')
 url='https://github.com/shubinlab/kdrive-arch'
@@ -29,8 +29,8 @@ package() {
 
   install -d "$root"
   tar -xzf "$bundle" -C "$pkgdir/opt/kdrive-native-arch"
-  mv "$pkgdir/opt/kdrive-native-arch/kdrive-native-arch"/* "$root/"
-  rmdir "$pkgdir/opt/kdrive-native-arch/kdrive-native-arch"
+  mv "$pkgdir/opt/kdrive-native-arch/kdrive-${pkgver}-native-arch"/* "$root/"
+  rmdir "$pkgdir/opt/kdrive-native-arch/kdrive-${pkgver}-native-arch"
 
   install -d "$pkgdir/usr/bin" "$pkgdir/usr/lib/systemd/user"
   sed "s/@KDRIVE_VERSION@/$pkgver/g" \

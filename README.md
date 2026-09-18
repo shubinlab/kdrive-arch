@@ -11,7 +11,8 @@ Arch application instead of an opaque AppImage:
 - runtime is `RelWithDebInfo`-built, stripped, and pruned of `.a` files,
   public headers, debug sections, and Crashpad;
 - debug symbols are published separately for useful crash reports;
-- the default build has Sentry activation disabled at compile time;
+- the default build links the upstream Sentry SDK for ABI compatibility, but
+  forces activation off at compile time and ships no Crashpad helper;
 - every install is versioned and rollback-safe without touching kDrive account
   databases or synchronized folders.
 

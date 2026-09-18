@@ -48,8 +48,8 @@ prefix.
 to `graphical-session.target`; the native desktop autostart entry is removed
 by the installer and by the Linux source patch when `APPIMAGE` is empty.
 
-The Sentry SDK remains linked for ABI compatibility, but activation is
-disabled at compile time with `KDRIVE_DISABLE_SENTRY=ON`. Crashpad is omitted;
+The Sentry SDK remains linked for ABI compatibility, but activation is forced
+off at compile time with `KDRIVE_DISABLE_SENTRY=ON`. Crashpad is omitted;
 local systemd-coredump is the diagnostic path. The unit also clears the Sentry
 environment as defense in depth. This policy avoids silently uploading account
 or file metadata while retaining a reproducible symbolized crash workflow.

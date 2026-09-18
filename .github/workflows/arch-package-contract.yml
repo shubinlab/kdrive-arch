@@ -25,10 +25,13 @@ jobs:
           bash -n packaging/arch/PKGBUILD \
             packaging/arch/check-package.sh \
             packaging/arch/tests/test-desktop-contract.sh \
+            packaging/arch/tests/test-build-output-contract.sh \
             packaging/arch/tests/test-pkgbuild-contract.sh \
             infomaniak-build-tools/linux/arch-native/build-package.sh \
             infomaniak-build-tools/linux/arch-native/install.sh
           packaging/arch/tests/test-pkgbuild-contract.sh packaging/arch/PKGBUILD
+          packaging/arch/tests/test-build-output-contract.sh \
+            infomaniak-build-tools/linux/arch-native/build-package.sh
           makepkg --printsrcinfo --dir packaging/arch | diff -u packaging/arch/.SRCINFO -
       - name: Check OAuth desktop contract
         run: |

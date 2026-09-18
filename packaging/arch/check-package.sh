@@ -25,6 +25,6 @@ done
 desktop-file-validate "$root/share/applications/kDrive_client.desktop"
 systemd-analyze verify "$root/systemd/kdrive.service"
 grep -q '^lifecycle=systemd-user-only;' "$root/MANIFEST" || die 'systemd lifecycle is not documented'
-grep -q '^sentry_policy=.*compile-time activation disabled' "$root/MANIFEST" || die 'Sentry policy is not compile-time disabled'
+grep -q '^sentry_policy=.*activation forced off at compile time' "$root/MANIFEST" || die 'Sentry policy is not compile-time disabled'
 
 printf 'OK kDrive runtime package: ABI, pruning, desktop contract, unit, and policy\n'

@@ -37,8 +37,6 @@ SOURCE_DIR="$(cd -- "$SOURCE_DIR" && pwd -P)"
 OUTPUT_DIR="$(mkdir -p -- "$OUTPUT_DIR" && cd -- "$OUTPUT_DIR" && pwd -P)"
 CONAN_OUTPUT="$OUTPUT_DIR/conan"
 BUILD_DIR="$OUTPUT_DIR/build"
-RUNTIME_DIR="$OUTPUT_DIR/kdrive-native-arch"
-SYMBOL_DIR="$OUTPUT_DIR/kdrive-native-arch-debug"
 
 git -C "$SOURCE_DIR" diff --quiet || die 'source checkout has local changes; use a clean tag checkout'
 git -C "$SOURCE_DIR" diff --cached --quiet || die 'source checkout has staged changes; use a clean tag checkout'
@@ -62,7 +60,7 @@ export KDRIVE_OUTPUT_DIR="$CONAN_OUTPUT"
 conan install "$WORKTREE_DIR" --output-folder "$CONAN_OUTPUT" --build=missing \
   -s:h build_type=RelWithDebInfo -s:b build_type=RelWithDebInfo
 
-rm -rf -- "$BUILD_DIR" "$RUNTIME_DIR" "$SYMBOL_DIR"
+rm -rf -- "$BUILD_DIR"
 cmake -S "$WORKTREE_DIR" -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_CXX_STANDARD=20 \
@@ -84,6 +82,9 @@ cmake --install "$BUILD_DIR" --prefix "$BUILD_DIR/install"
 
 version="$(awk '/KDRIVE_VERSION_FULL/ { gsub(/"/, "", $3); print $3; exit }' "$BUILD_DIR/version.h")"
 [[ "$version" =~ ^3\.8\.[0-9]+\.[0-9]+$ ]] || die "unexpected built version: $version"
+RUNTIME_DIR="$OUTPUT_DIR/kdrive-${version}-native-arch"
+SYMBOL_DIR="$OUTPUT_DIR/kdrive-${version}-native-arch-debug"
+rm -rf -- "$RUNTIME_DIR" "$SYMBOL_DIR"
 mkdir -p -- "$RUNTIME_DIR/bin" "$RUNTIME_DIR/lib" "$RUNTIME_DIR/share" "$SYMBOL_DIR"
 cp -a "$BUILD_DIR/install/bin/kDrive" "$BUILD_DIR/install/bin/kDrive_client" "$BUILD_DIR/install/bin/sync-exclude.lst" "$RUNTIME_DIR/bin/"
 cp -a "$BUILD_DIR/install/share/applications" "$BUILD_DIR/install/share/icons" "$RUNTIME_DIR/share/"
@@ -110,7 +111,7 @@ compiler=$(clang++ --version | head -n 1)
 qt=system-Qt6
 openssl=system-OpenSSL3
 host_requirements=qt6-base qt6-svg glib2 libsecret libzip curl c-ares openssl wayland
-sentry_policy=linked SDK, compile-time activation disabled by KDRIVE_DISABLE_SENTRY=ON; crashpad_handler omitted
+sentry_policy=linked SDK, activation forced off at compile time by KDRIVE_DISABLE_SENTRY=ON; crashpad_handler omitted
 lifecycle=systemd-user-only; native desktop autostart removed by source patch
 runtime_pruned=static archives, public headers, debug sections, crashpad helper
 EOF
