@@ -53,6 +53,8 @@ off at compile time with `KDRIVE_DISABLE_SENTRY=ON`. Crashpad is omitted;
 local systemd-coredump is the diagnostic path. The unit also clears the Sentry
 environment as defense in depth. This policy avoids silently uploading account
 or file metadata while retaining a reproducible symbolized crash workflow.
+The unit also clears `QT_QPA_PLATFORMTHEME` so the client does not load the
+GTK3 platform theme plugin under Wayland; this is scoped to kDrive only.
 
 ## Install, check, rollback
 

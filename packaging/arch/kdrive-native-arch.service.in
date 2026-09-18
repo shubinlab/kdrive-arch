@@ -12,6 +12,7 @@ Type=simple
 ExecStart=/usr/bin/kdrive-native-arch
 ExecStartPre=/usr/bin/test -x /usr/bin/kdrive-native-arch
 Environment="KDRIVE_SENTRY_ENVIRONMENT="
+Environment="QT_QPA_PLATFORMTHEME="
 Restart=on-failure
 RestartSec=10s
 StandardOutput=journal
