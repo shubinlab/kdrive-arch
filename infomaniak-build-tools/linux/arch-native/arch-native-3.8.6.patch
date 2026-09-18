@@ -5,7 +5,7 @@ index 2dea36d..d759160 100644
 @@ -7,6 +7,11 @@ if(APPLE)
      enable_language(OBJCXX)
  endif()
- 
+
 +option(KDRIVE_DISABLE_SENTRY "Disable Sentry and Crashpad initialization" OFF)
 +if(KDRIVE_DISABLE_SENTRY)
 +    add_compile_definitions(KDRIVE_DISABLE_SENTRY)
@@ -16,7 +16,7 @@ index 2dea36d..d759160 100644
  # https://web.archive.org/web/20140625123925/http://nadeausoftware.com/articles/2012/01/c_c_tip_how_use_compiler_predefined_macros_detect_operating_system
 @@ -341,7 +346,9 @@ elseif(BUILD_CLIENT)
          message(STATUS "sentry dll found in ${SENTRY_SHARED_LIBRARY}")
- 
+
          # Crashpad_handler
 -        if(TARGET sentry_crashpad::crashpad_handler)
 +        if(KDRIVE_DISABLE_SENTRY)
@@ -28,7 +28,7 @@ index 2dea36d..d759160 100644
 @@ -376,7 +383,19 @@ if(UNIX AND NOT APPLE)
              include("${CONAN_GEN_DIR}/ConanNormalizeVars.cmake")
          endif()
- 
+
 -        # We use <lib>_LIB_DIRS which is normalized by Conan to match the current build type
 +        # We use <lib>_LIB_DIRS which is normalized by Conan to match the current build type.
 +        # Native Arch builds deliberately use the host OpenSSL ABI; do not copy
@@ -71,7 +71,7 @@ index 7f08fce..d39c10b 100644
 -        else:
 +        elif os.getenv("KDRIVE_USE_SYSTEM_QT") != "1":
              self.requires("openssl/3.2.4", options={ "shared": True }) # Otherwise, using the conan center recipe.
- 
+
          self.requires("sentry/0.7.10", options={ "shared": True, "qt_version": qt_version })
 diff --git c/infomaniak-build-tools/conan/recipes/poco/all/conanfile.py w/infomaniak-build-tools/conan/recipes/poco/all/conanfile.py
 index 31679c5..6d164b0 100644
@@ -80,7 +80,7 @@ index 31679c5..6d164b0 100644
 @@ -117,6 +117,14 @@ class PocoConan(ConanFile):
          foundation_external_dependencies = self._poco_component_tree["Foundation"].external_dependencies
          self._poco_component_tree["Foundation"] = self._poco_component_tree["Foundation"]._replace(external_dependencies = list(map(lambda x: 'pcre2::pcre2' if x == 'pcre::pcre' else x, foundation_external_dependencies)))
- 
+
 +        # Native Arch builds must keep system libcurl/ngtcp2 and OpenSSL on the
 +        # same ABI.  Use the host OpenSSL targets instead of Conan's pinned
 +        # OpenSSL package in this mode.
@@ -89,7 +89,7 @@ index 31679c5..6d164b0 100644
 +                external_dependencies=[]
 +            )
 +
- 
+
      def layout(self):
          cmake_layout(self, src_folder="src")
 @@ -130,7 +138,7 @@ class PocoConan(ConanFile):
@@ -99,11 +99,11 @@ index 31679c5..6d164b0 100644
 -            else:
 +            elif os.getenv("KDRIVE_USE_SYSTEM_QT") != "1":
                  self.requires("openssl/3.2.4", options={ "shared": True })
- 
+
      def package_id(self):
 @@ -191,6 +199,14 @@ class PocoConan(ConanFile):
          deps.generate()
- 
+
      def build(self):
 +        # Poco 1.13.3 adds PCRE2 Unicode objects even in unbundled mode. With
 +        # current PCRE2 this duplicates symbols already provided by the Conan
@@ -117,12 +117,12 @@ index 31679c5..6d164b0 100644
          if not self.options.get_safe("sharedlibrary_debug_suffix", True):
              platform_specific_cmake = os.path.join(self.source_folder, "cmake", "DefinePlatformSpecifc.cmake")
 @@ -242,6 +258,8 @@ class PocoConan(ConanFile):
- 
+
          if self.settings.os in ["Linux", "FreeBSD"]:
              self.cpp_info.components["poco_foundation"].system_libs.extend(["pthread", "dl", "rt"])
 +            if os.getenv("KDRIVE_USE_SYSTEM_QT") == "1" and self.options.enable_crypto:
 +                self.cpp_info.components["poco_crypto"].system_libs.extend(["ssl", "crypto"])
- 
+
          if self.options.log_debug:
              self.cpp_info.components["poco_foundation"].defines.append("POCO_LOG_DEBUG")
 @@ -260,4 +278,4 @@ class PocoConan(ConanFile):
@@ -139,7 +139,7 @@ index 0c0adad..e97768d 100644
 @@ -34,6 +34,10 @@ class QtConan(ConanFile):
          "verbose": False
      }
- 
+
 +    @property
 +    def _use_system_qt(self):
 +        return os.getenv("KDRIVE_USE_SYSTEM_QT") == "1"
@@ -149,7 +149,7 @@ index 0c0adad..e97768d 100644
              super().__init__()
 @@ -262,6 +266,10 @@ class QtConan(ConanFile):
                  self.options.qt_login_type = "cli"
- 
+
      def validate(self):
 +        if self._use_system_qt:
 +            self.output.warning("Using the host Arch Qt installation instead of the Qt Online Installer.")
@@ -157,31 +157,31 @@ index 0c0adad..e97768d 100644
 +
          if not self.version.startswith("6."):
              raise ConanInvalidConfiguration("This recipe only supports Qt 6.x versions.")
- 
+
 @@ -367,6 +375,9 @@ class QtConan(ConanFile):
          pass
- 
+
      def build(self):
 +        if self._use_system_qt:
 +            return
 +
          self.output.highlight("Launching Qt installer...")
          installer_path = self._get_executable_path(self._download_installer())
- 
+
 @@ -470,6 +481,9 @@ class QtConan(ConanFile):
              raise ConanInvalidConfiguration(f"Unsupported OS: {self.settings.os}")
- 
+
      def package(self):
 +        if self._use_system_qt:
 +            return
 +
          self.output.highlight("This step can take a while, please be patient...")
- 
+
          copy(self, "*",
 @@ -513,6 +527,13 @@ class QtConan(ConanFile):
          self.cpp_info.set_property("cmake_build_modules", [ pjoin(self.package_folder, "lib", "cmake", "Qt6", "Qt6Config.cmake") ])
          self.cpp_info.set_property("cmake_find_mode", "none")
- 
+
 +        if self._use_system_qt:
 +            for env in (self.runenv_info, self.buildenv_info):
 +                env.prepend_path("CMAKE_PREFIX_PATH", "/usr")
@@ -215,22 +215,22 @@ index 490b039..a77c36b 100644
 --- c/src/libcommon/CMakeLists.txt
 +++ w/src/libcommon/CMakeLists.txt
 @@ -11,7 +11,7 @@ find_package(sentry REQUIRED)
- 
+
  if(UNIX AND CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
      # Use fallback library types for imported dependencies
 -    set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo NoConfig)
 +    set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo Release None NoConfig)
  endif()
  find_package(libzip 1.10.1 REQUIRED)
- 
+
 diff --git c/src/libcommon/log/sentry/handler.cpp w/src/libcommon/log/sentry/handler.cpp
 index bc1b354..b9d344e 100644
 --- c/src/libcommon/log/sentry/handler.cpp
 +++ w/src/libcommon/log/sentry/handler.cpp
 @@ -208,6 +208,11 @@ void Handler::init(AppType appType, int breadCrumbsSize) {
- 
+
      _appType = appType;
- 
+
 +#if defined(KDRIVE_DISABLE_SENTRY)
 +    _instance->_isSentryActivated = false;
 +    return;
@@ -246,29 +246,29 @@ index bc1b354..b9d344e 100644
 +    if (!_isSentryActivated) return;
      updateEffectiveSentryUser();
  }
- 
+
 @@ -349,6 +355,7 @@ void Handler::setMinUploadIntervalOnRateLimit(int minUploadIntervalOnRateLimit)
  }
- 
+
  void Handler::setTag(const std::string &key, const std::string &value) {
 +    if (!_isSentryActivated) return;
      sentry_set_tag(key.c_str(), value.c_str());
  }
- 
+
 @@ -428,6 +435,7 @@ void Handler::escalateSentryEvent(SentryEvent &event) const {
  }
- 
+
  void Handler::updateEffectiveSentryUser(const SentryUser &user) {
 +    if (!_isSentryActivated) return;
      if (_globalConfidentialityLevel == _lastConfidentialityLevel && user.isDefault()) return;
      _lastConfidentialityLevel = user.isDefault() ? _globalConfidentialityLevel : sentry::ConfidentialityLevel::Specific;
- 
+
 diff --git c/src/libcommon/log/sentry/handler.h w/src/libcommon/log/sentry/handler.h
 index 5d2fe12..8ec07a6 100644
 --- c/src/libcommon/log/sentry/handler.h
 +++ w/src/libcommon/log/sentry/handler.h
 @@ -105,7 +105,13 @@ class Handler {
- 
+
          void setDistributionChannel(DistributionChannel channel);
          void setAppUUID(std::string appUUID);
 -        void setIsSentryActivated(bool isSentryActivated) { _isSentryActivated = isSentryActivated; }
@@ -279,12 +279,12 @@ index 5d2fe12..8ec07a6 100644
 +            _isSentryActivated = isSentryActivated;
 +#endif
 +        }
- 
+
          // Returns the file path where non-crash events of type `appType` are written locally.
          static SyncPath getEventFilePath(const AppType appType) { return getEventFilePath(appType, false); }
 @@ -139,7 +145,9 @@ class Handler {
          sentry::ConfidentialityLevel _lastConfidentialityLevel = sentry::ConfidentialityLevel::None;
- 
+
          void setTag(const std::string &key, const std::string &value);
 -        void removeTag(const std::string &key) { sentry_remove_tag(key.c_str()); }
 +        void removeTag(const std::string &key) {
@@ -298,22 +298,22 @@ index 5a289dd..7fbb85a 100644
 --- c/src/libcommonserver/CMakeLists.txt
 +++ w/src/libcommonserver/CMakeLists.txt
 @@ -12,7 +12,7 @@ find_package(xxHash 0.8.2 REQUIRED)
- 
+
  if(UNIX AND CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
      # Use fallback library types for imported dependencies
 -    set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo NoConfig)
 +    set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo Release None NoConfig)
  endif()
- 
+
  set(CMAKE_AUTOMOC TRUE)
 diff --git c/src/libcommonserver/log/log.h w/src/libcommonserver/log/log.h
 index 53d31b9..1be92d5 100644
 --- c/src/libcommonserver/log/log.h
 +++ w/src/libcommonserver/log/log.h
 @@ -27,7 +27,7 @@
- 
+
  namespace KDC {
- 
+
 -#ifdef NDEBUG
 +#if defined(NDEBUG) && !defined(KDRIVE_DISABLE_SENTRY)
  #define LOG_DEBUG(logger, logEvent)                                                               \
