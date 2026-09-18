@@ -1,7 +1,7 @@
-pkgname=kdrive-native-arch
+pkgname=kdrive-arch
 pkgver=3.8.7.1
-pkgrel=12
-pkgdesc='Native Arch Linux/CachyOS kDrive desktop client'
+pkgrel=13
+pkgdesc='Arch Linux/CachyOS kDrive desktop client'
 arch=('x86_64')
 options=('!strip' '!debug')
 url='https://github.com/shubinlab/kdrive-arch'
@@ -25,21 +25,21 @@ build() {
 }
 
 package() {
-  local bundle="$srcdir/dist/kdrive-${pkgver}-native-arch.tar.gz"
-  local root="$pkgdir/opt/kdrive-native-arch/$pkgver"
+  local bundle="$srcdir/dist/kdrive-${pkgver}-arch.tar.gz"
+  local root="$pkgdir/opt/kdrive-arch/$pkgver"
 
   install -d "$root"
-  tar -xzf "$bundle" -C "$pkgdir/opt/kdrive-native-arch"
-  mv "$pkgdir/opt/kdrive-native-arch/kdrive-${pkgver}-native-arch"/* "$root/"
-  rmdir "$pkgdir/opt/kdrive-native-arch/kdrive-${pkgver}-native-arch"
+  tar -xzf "$bundle" -C "$pkgdir/opt/kdrive-arch"
+  mv "$pkgdir/opt/kdrive-arch/kdrive-${pkgver}-arch"/* "$root/"
+  rmdir "$pkgdir/opt/kdrive-arch/kdrive-${pkgver}-arch"
 
   install -d "$pkgdir/usr/bin" "$pkgdir/usr/lib/systemd/user"
   sed "s/@KDRIVE_VERSION@/$pkgver/g" \
-    "$startdir/kdrive-native-arch.in" >"$pkgdir/usr/bin/kdrive-native-arch"
-  chmod 0755 "$pkgdir/usr/bin/kdrive-native-arch"
+    "$startdir/kdrive-arch.in" >"$pkgdir/usr/bin/kdrive-arch"
+  chmod 0755 "$pkgdir/usr/bin/kdrive-arch"
 
   install -d "$pkgdir/usr/share/applications"
-  sed 's|^Exec=.*|Exec=/usr/bin/kdrive-native-arch %u|' \
+  sed 's|^Exec=.*|Exec=/usr/bin/kdrive-arch %u|' \
     "$root/share/applications/kDrive_client.desktop" >"$pkgdir/usr/share/applications/kDrive_client.desktop"
   chmod 0644 "$pkgdir/usr/share/applications/kDrive_client.desktop"
 

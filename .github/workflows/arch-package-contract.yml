@@ -9,7 +9,7 @@ on:
       - 'tests/**'
       - 'README.md'
       - 'install.sh'
-      - 'kdrive-native-arch.in'
+      - 'kdrive-arch.in'
       - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
   pull_request:
@@ -20,7 +20,7 @@ on:
       - 'tests/**'
       - 'README.md'
       - 'install.sh'
-      - 'kdrive-native-arch.in'
+      - 'kdrive-arch.in'
       - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
 
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install metadata tools
-        run: pacman -Sy --noconfirm git
+        run: pacman -Sy --noconfirm curl git
       - name: Check shell and package metadata
         run: |
           bash -n PKGBUILD \
@@ -41,12 +41,16 @@ jobs:
             tests/test-pkgbuild-contract.sh \
             tests/test-repository-contract.sh \
             tests/test-installer-contract.sh \
+            tests/test-package-name-contract.sh \
+            tests/test-installer-redteam.sh \
             build/build-package.sh \
             build/install.sh
           tests/test-pkgbuild-contract.sh PKGBUILD
           tests/test-build-output-contract.sh build/build-package.sh
+          tests/test-package-name-contract.sh
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- tests/test-installer-redteam.sh
           runuser -u builder -- makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
       - name: Check OAuth desktop contract
         run: |

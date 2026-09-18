@@ -17,11 +17,20 @@ for path in \
   install.sh \
   build/build-package.sh \
   build/install.sh \
-  build/arch-native-3.8.7.1.patch \
+  build/arch-3.8.7.1.patch \
   tests/check-package.sh \
-  tests/test-pkgbuild-contract.sh; do
+  tests/test-pkgbuild-contract.sh \
+  tests/test-package-name-contract.sh \
+  tests/test-installer-redteam.sh; do
   require_file "$path"
 done
+
+if git -C "$root" ls-files | rg -i \
+  '(^|/)(swift|macos|ios|android|windows|win32|xcode)(/|$)|\.swift$|\.mm$|\.xcodeproj' \
+  >/dev/null; then
+  printf 'UNEXPECTED non-Arch platform source in active tree\n' >&2
+  failures=$((failures + 1))
+fi
 
 for path in packaging/arch infomaniak-build-tools src; do
   if [[ -e "$root/$path" ]]; then

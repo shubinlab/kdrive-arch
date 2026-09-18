@@ -14,13 +14,15 @@ Arch release payload.
 
 ## Naming decision
 
-Keep `pkgname=kdrive-native-arch`. It is the pacman identity used for upgrade,
-ownership, uninstall, and rollback. Renaming it to `kde-arch` would be a
-different, misleading product identity and would break package continuity.
+Use `pkgname=kdrive-arch`. `kDrive` is the product name and `arch` is the
+platform scope; `kde-arch` would incorrectly imply the KDE project. This is a
+deliberate package identity migration from the previous `kdrive-native-arch`
+name, so the installer must detect and replace the old package while retaining
+its cached package and user-state rollback path.
 
-Future release tags may use the clearer `kdrive-arch-<pkgver>-<pkgrel>` form;
-existing `arch-3.8.7.1-*` tags remain immutable rollback references. The
-installer remains release-name independent by consuming `releases/latest`.
+Release tags use the clearer `kdrive-arch-<pkgver>-<pkgrel>` form; existing
+`arch-3.8.7.1-*` tags remain immutable rollback references. The installer
+remains release-name independent by consuming `releases/latest`.
 
 ## Security boundaries
 

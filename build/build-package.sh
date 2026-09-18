@@ -81,7 +81,7 @@ trap cleanup EXIT
 cp -a -- "$SOURCE_DIR"/. "$WORKTREE_DIR"/
 rm -rf -- "$WORKTREE_DIR/.git"
 patch --directory="$WORKTREE_DIR" --batch --forward --strip=1 \
-  <"$SCRIPT_DIR/arch-native-3.8.7.1.patch" >/dev/null ||
+  <"$SCRIPT_DIR/arch-3.8.7.1.patch" >/dev/null ||
   die 'native Arch patch does not apply to official 3.8.7'
 
 export KDRIVE_USE_SYSTEM_QT=1
@@ -141,8 +141,8 @@ cmake --install "$BUILD_DIR" --prefix "$BUILD_DIR/install"
 
 version="$(awk '/KDRIVE_VERSION_FULL/ { gsub(/"/, "", $3); print $3; exit }' "$BUILD_DIR/version.h")"
 [[ "$version" =~ ^3\.8\.[0-9]+\.[0-9]+$ ]] || die "unexpected built version: $version"
-RUNTIME_DIR="$OUTPUT_DIR/kdrive-${version}-native-arch"
-SYMBOL_DIR="$OUTPUT_DIR/kdrive-${version}-native-arch-debug"
+RUNTIME_DIR="$OUTPUT_DIR/kdrive-${version}-arch"
+SYMBOL_DIR="$OUTPUT_DIR/kdrive-${version}-arch-debug"
 rm -rf -- "$RUNTIME_DIR" "$SYMBOL_DIR"
 mkdir -p -- "$RUNTIME_DIR/bin" "$RUNTIME_DIR/lib" "$RUNTIME_DIR/share" "$SYMBOL_DIR"
 cp -a "$BUILD_DIR/install/bin/kDrive" "$BUILD_DIR/install/bin/kDrive_client" "$BUILD_DIR/install/bin/sync-exclude.lst" "$RUNTIME_DIR/bin/"
@@ -169,7 +169,7 @@ rm -rf -- "$RUNTIME_DIR/include"
 install -D -m 0644 "$SCRIPT_DIR/kdrive.service" "$RUNTIME_DIR/systemd/kdrive.service"
 install -D -m 0755 "$SCRIPT_DIR/install.sh" "$RUNTIME_DIR/kdrive-install.sh"
 cat >"$RUNTIME_DIR/MANIFEST" <<EOF
-package=kDrive-${version}-native-arch
+package=kDrive-${version}-arch
 source_commit=$source_commit
 build_type=RelWithDebInfo
 compiler=$(clang++ --version | head -n 1)
@@ -177,7 +177,7 @@ qt=system-Qt6
 openssl=system-OpenSSL3
 host_requirements=qt6-base qt6-svg glib2 libsecret libzip curl c-ares openssl wayland
 sentry_policy=linked SDK, activation forced off at compile time by KDRIVE_DISABLE_SENTRY=ON; crashpad_handler omitted
-lifecycle=systemd-user-only; native desktop autostart removed by source patch
+lifecycle=systemd-user-only; vendor desktop autostart removed by source patch
 runtime_pruned=static archives, public headers, debug sections, crashpad helper
 EOF
 (
@@ -185,7 +185,7 @@ EOF
   sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst kdrive-install.sh systemd/kdrive.service
 ) >"$RUNTIME_DIR/SHA256SUMS"
 tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-  -czf "$OUTPUT_DIR/kdrive-${version}-native-arch.tar.gz" "$(basename "$RUNTIME_DIR")"
+  -czf "$OUTPUT_DIR/kdrive-${version}-arch.tar.gz" "$(basename "$RUNTIME_DIR")"
 tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-  -czf "$OUTPUT_DIR/kdrive-${version}-native-arch-debug.tar.gz" "$(basename "$SYMBOL_DIR")"
-printf 'kDrive build complete: %s\n' "$OUTPUT_DIR/kdrive-${version}-native-arch.tar.gz"
+  -czf "$OUTPUT_DIR/kdrive-${version}-arch-debug.tar.gz" "$(basename "$SYMBOL_DIR")"
+printf 'kDrive build complete: %s\n' "$OUTPUT_DIR/kdrive-${version}-arch.tar.gz"

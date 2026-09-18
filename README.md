@@ -1,6 +1,6 @@
 # kDrive for Arch
 
-Native Arch Linux package for Infomaniak kDrive on Arch Linux, CachyOS, and Omarchy.
+Arch Linux package for Infomaniak kDrive on Arch Linux, CachyOS, and Omarchy.
 
 This is a community package, not an official Infomaniak binary. It builds the
 official upstream source for the host's Qt/OpenSSL ABI and keeps startup under
@@ -12,7 +12,7 @@ one user systemd unit.
 curl -fL https://github.com/shubinlab/kdrive-arch/releases/latest/download/install.sh | bash
 ```
 
-The installer builds the latest verified release, installs `kdrive-native-arch`,
+The installer builds the latest verified release, installs `kdrive-arch`,
 migrates an older archive installation when present, enables `kdrive.service`,
 and preserves rollback state. It never removes kDrive account data, caches, or
 synchronized folders.
@@ -26,7 +26,7 @@ curl -fL https://github.com/shubinlab/kdrive-arch/releases/latest/download/insta
 
 The package runtime is `RelWithDebInfo`. Static archives, public headers,
 debug sections, and the Crashpad helper are removed from runtime; debug symbols
-are published separately. The Sentry SDK remains linked for ABI compatibility,
+are emitted as a separate bundle. The Sentry SDK remains linked for ABI compatibility,
 but activation is disabled at compile time and the unit clears Sentry
 environment variables.
 

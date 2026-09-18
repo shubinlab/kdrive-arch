@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 REPOSITORY="${KDRIVE_INSTALL_REPO:-shubinlab/kdrive-arch}"
 RELEASE_BASE_URL="${KDRIVE_RELEASE_BASE_URL:-https://github.com/${REPOSITORY}/releases/latest/download}"
+PACKAGE_NAME=kdrive-arch
+LEGACY_PACKAGE_NAME=kdrive-native-arch
 STATE_HOME="${XDG_STATE_HOME:-${HOME}/.local/state}"
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 STATE_ROOT="${KDRIVE_INSTALL_ROOT:-${STATE_HOME}/kdrive-arch}"
@@ -14,6 +16,8 @@ ASSUME_YES=0
 TEMP_ROOT=""
 SOURCE_ROOT=""
 BACKUP_DIR=""
+INSTALL_BACKUP_ACTIVE=0
+INSTALL_PACKAGE_ROLLBACK_PENDING=0
 
 die() { printf 'kdrive-install: %s\n' "$*" >&2; exit 1; }
 say() { printf 'kdrive-install: %s\n' "$*"; }
@@ -58,7 +62,7 @@ preflight() {
     *' arch '*|*' cachyos '*|*' omarchy '*) ;;
     *) die 'this installer supports Arch Linux, CachyOS, and Omarchy only' ;;
   esac
-  for command_name in sha256sum systemctl; do
+  for command_name in sha256sum realpath systemctl; do
     need_command "$command_name"
   done
   case "$ACTION" in
@@ -165,34 +169,122 @@ download_source() {
   curl -fL "$RELEASE_BASE_URL/SHA256SUMS" -o "$sums"
   expected="$(awk '$2 == "kdrive-arch-source.tar.gz" || $2 == "*kdrive-arch-source.tar.gz" {print $1; exit}' "$sums")"
   [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || die 'release checksum does not contain kdrive-arch-source.tar.gz'
-  printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
-  top="$(tar -tzf "$archive" | sed -n '1s,/.*,,p')"
-  [[ -n "$top" ]] || die 'release archive is empty'
-  tar -xzf "$archive" -C "$TEMP_ROOT"
+  printf '%s  %s\n' "$expected" "$archive" | sha256sum -c - ||
+    die 'release checksum mismatch'
+  validate_release_archive "$archive"
+  top=kdrive-arch
+  tar --extract --gzip --file "$archive" --directory "$TEMP_ROOT" \
+    --no-same-owner --no-same-permissions
   SOURCE_ROOT="$TEMP_ROOT/$top"
+  local temp_real source_real
+  temp_real="$(realpath -e "$TEMP_ROOT")"
+  source_real="$(realpath -e "$SOURCE_ROOT")"
+  [[ "$source_real/" == "$temp_real/"* ]] || die 'release source escaped temporary directory'
   [[ -r "$SOURCE_ROOT/PKGBUILD" ]] || die 'release archive has no root PKGBUILD'
 }
 
+validate_release_archive() {
+  local archive="$1" listing metadata entry root component
+  listing="$TEMP_ROOT/.release-archive.list"
+  metadata="$TEMP_ROOT/.release-archive.metadata"
+  tar --list --gzip --file "$archive" >"$listing" || die 'release archive cannot be listed'
+  tar --list --verbose --gzip --file "$archive" >"$metadata" || die 'release archive metadata cannot be read'
+  [[ -s "$listing" ]] || die 'release archive is empty'
+  root=''
+  while IFS= read -r entry; do
+    [[ -n "$entry" ]] || continue
+    [[ "$entry" != /* && "$entry" != -* ]] || die 'release archive contains an absolute or option-like path'
+    [[ "$entry" != *' -> '* ]] || die 'release archive symlinks are not allowed'
+    if printf '%s' "$entry" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+      die 'release archive contains control characters in a path'
+    fi
+    IFS='/' read -r -a components <<<"$entry"
+    root="${components[0]}"
+    [[ "$root" == kdrive-arch ]] || die "release archive root must be kdrive-arch/: $root"
+    for component in "${components[@]}"; do
+      [[ "$component" != .. && "$component" != . ]] || die 'release archive contains parent-relative paths'
+    done
+  done <"$listing"
+  while IFS= read -r entry; do
+    case "${entry:0:1}" in
+      l|h) die 'release archive symlinks and hardlinks are not allowed' ;;
+    esac
+  done <"$metadata"
+}
+
+installed_package_name() {
+  if pacman -Q "$PACKAGE_NAME" >/dev/null 2>&1; then
+    printf '%s\n' "$PACKAGE_NAME"
+  elif pacman -Q "$LEGACY_PACKAGE_NAME" >/dev/null 2>&1; then
+    printf '%s\n' "$LEGACY_PACKAGE_NAME"
+  fi
+}
+
 save_previous_package() {
-  local version package
-  version="$(pacman -Q kdrive-native-arch 2>/dev/null | awk '{print $2}' || true)"
+  local package_name version package
+  package_name="$(installed_package_name || true)"
+  [[ -n "$package_name" ]] || return 0
+  version="$(pacman -Q "$package_name" 2>/dev/null | awk '{print $2}' || true)"
   [[ -n "$version" ]] || return 0
-  package="$(find /var/cache/pacman/pkg -maxdepth 1 -type f -name "kdrive-native-arch-${version}-*.pkg.tar.*" -print -quit 2>/dev/null || true)"
+  package="$(find /var/cache/pacman/pkg -maxdepth 1 -type f -name "${package_name}-${version}-*.pkg.tar.*" -print -quit 2>/dev/null || true)"
   if [[ -n "$package" ]]; then
     install -m 0644 "$package" "$PACKAGE_CACHE/$(basename -- "$package")"
     printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$package")" >"$STATE_ROOT/previous-package"
+    printf '%s\n' "$package_name" >"$STATE_ROOT/previous-package-name"
+  elif [[ "$package_name" == "$LEGACY_PACKAGE_NAME" ]]; then
+    die 'legacy kDrive package is installed but its cached archive is unavailable; refusing unsafe migration'
   fi
 }
 
 build_and_install() {
-  local package_file
-  local -a args=(--syncdeps --install)
+  local package_file package_name
+  local -a args=(--syncdeps)
   ((ASSUME_YES)) && args+=(--noconfirm)
-  (cd "$SOURCE_ROOT" && makepkg "${args[@]}")
-  package_file="$(find "$SOURCE_ROOT" -maxdepth 1 -type f -name 'kdrive-native-arch-*.pkg.tar.*' -print -quit)"
-  [[ -n "$package_file" ]] || die 'makepkg produced no kdrive-native-arch package'
+  if ! (cd "$SOURCE_ROOT" && makepkg "${args[@]}"); then
+    return 1
+  fi
+  package_file="$(find "$SOURCE_ROOT" -maxdepth 1 -type f -name 'kdrive-arch-*.pkg.tar.*' -print -quit)"
+  [[ -n "$package_file" ]] || die 'makepkg produced no kdrive-arch package'
+  package_name="$(installed_package_name || true)"
+  if [[ "$package_name" == "$LEGACY_PACKAGE_NAME" ]]; then
+    INSTALL_PACKAGE_ROLLBACK_PENDING=1
+    local -a remove_args=(-Rdd)
+    ((ASSUME_YES)) && remove_args+=(--noconfirm)
+    if ! run_pacman "${remove_args[@]}" "$LEGACY_PACKAGE_NAME"; then
+      return 1
+    fi
+  fi
+  INSTALL_PACKAGE_ROLLBACK_PENDING=1
+  local -a install_args=(-U)
+  ((ASSUME_YES)) && install_args+=(--noconfirm)
+  if ! run_pacman "${install_args[@]}" "$package_file"; then
+    return 1
+  fi
   install -m 0644 "$package_file" "$PACKAGE_CACHE/$(basename -- "$package_file")"
   printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$package_file")" >"$STATE_ROOT/current-package"
+  INSTALL_PACKAGE_ROLLBACK_PENDING=0
+}
+
+restore_previous_package() {
+  local package
+  package="$(cat "$STATE_ROOT/previous-package" 2>/dev/null || true)"
+  [[ -f "$package" ]] || return 0
+  local -a args=(-U)
+  ((ASSUME_YES)) && args+=(--noconfirm)
+  run_pacman "${args[@]}" "$package" || true
+}
+
+install_failure_trap() {
+  local status="$?"
+  trap - EXIT
+  if ((INSTALL_BACKUP_ACTIVE)); then
+    if ((INSTALL_PACKAGE_ROLLBACK_PENDING)); then
+      restore_previous_package || true
+    fi
+    restore_user_state "$BACKUP_DIR" || true
+  fi
+  rm -rf -- "$TEMP_ROOT"
+  exit "$status"
 }
 
 verify_runtime() {
@@ -200,9 +292,9 @@ verify_runtime() {
   fragment="$(systemctl --user show kdrive.service -p FragmentPath --value 2>/dev/null || true)"
   [[ "$fragment" == /usr/lib/systemd/user/kdrive.service ]] ||
     die "unexpected kdrive.service owner: ${fragment:-none}"
-  launcher=/usr/bin/kdrive-native-arch
+  launcher=/usr/bin/kdrive-arch
   [[ -x "$launcher" ]] || die 'package launcher is missing'
-  pacman -Q kdrive-native-arch >/dev/null || die 'pacman does not own kdrive-native-arch'
+  pacman -Q "$PACKAGE_NAME" >/dev/null || die 'pacman does not own kdrive-arch'
   [[ "$(systemctl --user is-enabled kdrive.service 2>/dev/null || true)" == enabled ]] ||
     die 'kdrive.service is not enabled'
   [[ "$(systemctl --user is-active kdrive.service 2>/dev/null || true)" == active ]] ||
@@ -225,8 +317,11 @@ rollback() {
 }
 
 uninstall() {
+  local package_name
   systemctl --user disable --now kdrive.service >/dev/null 2>&1 || true
-  run_pacman -Rns kdrive-native-arch
+  package_name="$(installed_package_name || true)"
+  [[ -n "$package_name" ]] || die 'kDrive package is not installed'
+  run_pacman -Rns "$package_name"
   say 'package removed; kDrive account and synchronized data were preserved'
 }
 
@@ -252,20 +347,19 @@ main() {
       TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/kdrive-arch.XXXXXX")"
       trap 'rm -rf -- "$TEMP_ROOT"' EXIT
       snapshot_user_state
+      INSTALL_BACKUP_ACTIVE=1
+      trap 'install_failure_trap' EXIT
       save_previous_package
-      if ! download_source; then
-        restore_user_state "$BACKUP_DIR"
-        die 'release download failed; previous state restored'
-      fi
-      if ! build_and_install; then
-        restore_user_state "$BACKUP_DIR"
-        die 'package install failed; previous state restored'
-      fi
+      download_source
+      build_and_install
       if ((START_SERVICE)); then
         systemctl --user daemon-reload
         systemctl --user enable --now kdrive.service
         verify_runtime
       fi
+      INSTALL_BACKUP_ACTIVE=0
+      rm -rf -- "$TEMP_ROOT"
+      trap - EXIT
       say 'kDrive installed from the latest verified release'
       ;;
   esac

@@ -1,5 +1,5 @@
 [Unit]
-Description=kDrive desktop synchronization client (native Arch package)
+Description=kDrive desktop synchronization client (Arch package)
 Wants=network-online.target
 After=graphical-session.target network-online.target
 PartOf=graphical-session.target
@@ -9,8 +9,8 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/kdrive-native-arch
-ExecStartPre=/usr/bin/test -x /usr/bin/kdrive-native-arch
+ExecStart=/usr/bin/kdrive-arch
+ExecStartPre=/usr/bin/test -x /usr/bin/kdrive-arch
 Environment="KDRIVE_SENTRY_ENVIRONMENT="
 Environment="QT_QPA_PLATFORMTHEME="
 Restart=on-failure

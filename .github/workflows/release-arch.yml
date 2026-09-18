@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'arch-*'
+      - 'kdrive-arch-*'
 
 permissions:
   contents: write
