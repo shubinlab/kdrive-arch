@@ -11,3 +11,7 @@ grep -q 'SYMBOL_DIR="\$OUTPUT_DIR/kdrive-\${version}-native-arch-debug"' "$build
   printf 'debug prefix must include the built version\n' >&2
   exit 1
 }
+grep -q 'sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst' "$builder" || {
+  printf 'SHA256SUMS must use relative runtime paths\n' >&2
+  exit 1
+}

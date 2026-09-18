@@ -115,7 +115,10 @@ sentry_policy=linked SDK, activation forced off at compile time by KDRIVE_DISABL
 lifecycle=systemd-user-only; native desktop autostart removed by source patch
 runtime_pruned=static archives, public headers, debug sections, crashpad helper
 EOF
-sha256sum "$RUNTIME_DIR/bin/kDrive" "$RUNTIME_DIR/bin/kDrive_client" "$RUNTIME_DIR/bin/sync-exclude.lst" "$RUNTIME_DIR/kdrive-install.sh" "$RUNTIME_DIR/systemd/kdrive.service" >"$RUNTIME_DIR/SHA256SUMS"
+(
+  cd -- "$RUNTIME_DIR"
+  sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst kdrive-install.sh systemd/kdrive.service
+) >"$RUNTIME_DIR/SHA256SUMS"
 tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
   -czf "$OUTPUT_DIR/kdrive-${version}-native-arch.tar.gz" "$(basename "$RUNTIME_DIR")"
 tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \

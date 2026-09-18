@@ -24,6 +24,9 @@ done
 "$(dirname -- "$0")/tests/test-desktop-contract.sh" "$root/share/applications/kDrive_client.desktop"
 desktop-file-validate "$root/share/applications/kDrive_client.desktop"
 systemd-analyze verify "$root/systemd/kdrive.service"
+if grep -Eq '  /|  \.\./' "$root/SHA256SUMS"; then
+  die 'SHA256SUMS contains an absolute or parent-relative build path'
+fi
 grep -q '^lifecycle=systemd-user-only;' "$root/MANIFEST" || die 'systemd lifecycle is not documented'
 grep -q '^sentry_policy=.*activation forced off at compile time' "$root/MANIFEST" || die 'Sentry policy is not compile-time disabled'
 
