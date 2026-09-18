@@ -168,10 +168,10 @@ ln -sfn -- "$target/bin/sync-exclude.lst" "${LAUNCHER_DIR}/sync-exclude.lst"
 install -D -m 0644 "$target/systemd/kdrive.service" "$SERVICE_TARGET"
 awk -v exec="${HOME}/.local/bin/kDrive" -v icon="$target/share/icons/hicolor/512x512/apps/kdrive-win.png" \
   'BEGIN { found_exec=0; found_icon=0 }
-   /^Exec=/ { print "Exec=" exec; found_exec=1; next }
+   /^Exec=/ { print "Exec=" exec " %u"; found_exec=1; next }
    /^Icon=/ { print "Icon=" icon; found_icon=1; next }
    { print }
-   END { if (!found_exec) print "Exec=" exec; if (!found_icon) print "Icon=" icon }' \
+   END { if (!found_exec) print "Exec=" exec " %u"; if (!found_icon) print "Icon=" icon }' \
   "$target/share/applications/kDrive_client.desktop" >"${DESKTOP_TARGET}.tmp"
 install -m 0644 "${DESKTOP_TARGET}.tmp" "$DESKTOP_TARGET"
 rm -f -- "${DESKTOP_TARGET}.tmp"

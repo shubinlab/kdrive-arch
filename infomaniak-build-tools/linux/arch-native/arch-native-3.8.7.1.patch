@@ -344,3 +344,25 @@ index 39aebdc..700a9f9 100644
          autoStartFile << "Name=" << guiName << std::endl;
          autoStartFile << "GenericName=File Synchronizer" << std::endl;
 
+diff --git c/src/libcommonserver/utility/utility_linux.cpp w/src/libcommonserver/utility/utility_linux.cpp
+index 39aebdc..d7ce434c 100644
+--- c/src/libcommonserver/utility/utility_linux.cpp
++++ w/src/libcommonserver/utility/utility_linux.cpp
+@@ -274,7 +274,7 @@ bool Utility::registerLoginRedirection() {
+     }
+
+     const auto urlSchemeDirPath = SyncPath(std::string(homePathEnv) + "/.local/share/applications");
+-    const auto urlSchemeFilePath = urlSchemeDirPath / (std::string(APPLICATION_EXECUTABLE) + ".desktop");
++    const auto urlSchemeFilePath = urlSchemeDirPath / (std::string(APPLICATION_CLIENT_EXECUTABLE) + ".desktop");
+
+     IoError ioError = IoError::Unknown;
+     bool exists = false;
+@@ -317,7 +317,7 @@ bool Utility::registerLoginRedirection() {
+     }
+
+     // Register scheme
+-    if (!Utility::runCommand("xdg-mime", std::vector<std::string>{"default", "kDrive.desktop", mimeType})) {
++    if (!Utility::runCommand("xdg-mime", std::vector<std::string>{"default", std::string(APPLICATION_CLIENT_EXECUTABLE) + ".desktop", mimeType})) {
+         LOGW_WARN(logger(), L"Failed to register URL scheme with xdg-mime");
+         res = false;
+     }

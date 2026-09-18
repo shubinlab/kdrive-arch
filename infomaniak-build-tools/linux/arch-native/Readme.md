@@ -4,7 +4,8 @@ This directory contains the Arch-family packaging path for kDrive. It keeps
 the upstream CMake/Conan project layout intact while adding a native Linux
 runtime contract for Arch Linux, CachyOS, and Omarchy hosts.
 
-The build is pinned to the official `3.8.6` tag (`bf2040056efef79f39287178afab0ee7614deab3`). It produces a
+The build is pinned to the official `3.8.7` tag (`b14222be555cc9f934e9ed2ec7bb36beb9c437a5`), whose Linux build is
+`3.8.7.1`. It produces a
 `RelWithDebInfo` runtime archive and a separate debug-symbol archive. Qt6 and
 OpenSSL are resolved from the target system; the bundle carries only the
 remaining private shared libraries. The host must provide the current ABI:
@@ -20,13 +21,13 @@ script does not change system files and writes only to the selected output
 directory:
 
 ```bash
-git clone --branch 3.8.6 --recurse-submodules \
-  https://github.com/Infomaniak/desktop-kDrive.git desktop-kDrive-3.8.6
+git clone --branch 3.8.7 --recurse-submodules \
+  https://github.com/Infomaniak/desktop-kDrive.git desktop-kDrive-3.8.7
 python -m venv .venv
 . .venv/bin/activate
 pip install conan
 infomaniak-build-tools/linux/arch-native/build-package.sh \
-  --source "$PWD/desktop-kDrive-3.8.6" \
+  --source "$PWD/desktop-kDrive-3.8.7" \
   --output "$PWD/dist"
 ```
 
@@ -48,10 +49,10 @@ to `graphical-session.target`; the native desktop autostart entry is removed
 by the installer and by the Linux source patch when `APPIMAGE` is empty.
 
 The Sentry SDK remains linked for ABI compatibility, but activation is
-disabled with `KDRIVE_SENTRY_ENVIRONMENT=` in the unit. Crashpad is omitted;
-local systemd-coredump is the diagnostic path. This policy avoids silently
-uploading account or file metadata while retaining a reproducible symbolized
-crash workflow.
+disabled at compile time with `KDRIVE_DISABLE_SENTRY=ON`. Crashpad is omitted;
+local systemd-coredump is the diagnostic path. The unit also clears the Sentry
+environment as defense in depth. This policy avoids silently uploading account
+or file metadata while retaining a reproducible symbolized crash workflow.
 
 ## Install, check, rollback
 

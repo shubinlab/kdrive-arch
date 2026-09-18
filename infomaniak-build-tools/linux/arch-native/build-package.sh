@@ -9,7 +9,7 @@ CONAN_OUTPUT=""
 die() { printf 'kdrive-build: %s\n' "$*" >&2; exit 1; }
 usage() {
   cat <<'EOF'
-Usage: build-package.sh --source <official-3.8.6-checkout> --output <directory>
+Usage: build-package.sh --source <official-3.8.7-checkout> --output <directory>
 
 The source checkout must include git submodules. Conan 2, CMake, Clang, and
 objcopy are required. The output directory receives the runtime bundle and a
@@ -43,8 +43,8 @@ SYMBOL_DIR="$OUTPUT_DIR/kdrive-native-arch-debug"
 git -C "$SOURCE_DIR" diff --quiet || die 'source checkout has local changes; use a clean tag checkout'
 git -C "$SOURCE_DIR" diff --cached --quiet || die 'source checkout has staged changes; use a clean tag checkout'
 source_commit="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
-[[ "$source_commit" == bf2040056efef79f39287178afab0ee7614deab3 ]] ||
-  die "source must be official 3.8.6 (bf2040056efef79f39287178afab0ee7614deab3), got $source_commit"
+[[ "$source_commit" == b14222be555cc9f934e9ed2ec7bb36beb9c437a5 ]] ||
+  die "source must be official 3.8.7 (b14222be555cc9f934e9ed2ec7bb36beb9c437a5), got $source_commit"
 
 # Apply the Arch delta to a disposable copy. The caller's clean upstream
 # checkout remains reusable for another build and for upstream comparisons.
@@ -54,8 +54,8 @@ trap cleanup EXIT
 cp -a -- "$SOURCE_DIR"/. "$WORKTREE_DIR"/
 rm -rf -- "$WORKTREE_DIR/.git"
 patch --directory="$WORKTREE_DIR" --batch --forward --strip=1 \
-  <"$SCRIPT_DIR/arch-native-3.8.6.patch" >/dev/null ||
-  die 'native Arch patch does not apply to official 3.8.6'
+  <"$SCRIPT_DIR/arch-native-3.8.7.1.patch" >/dev/null ||
+  die 'native Arch patch does not apply to official 3.8.7'
 
 export KDRIVE_USE_SYSTEM_QT=1
 export KDRIVE_OUTPUT_DIR="$CONAN_OUTPUT"
@@ -72,7 +72,7 @@ cmake -S "$WORKTREE_DIR" -B "$BUILD_DIR" \
   -DBIN_INSTALL_DIR="$BUILD_DIR/bin" \
   -DBUILD_CLIENT=ON \
   -DBUILD_UNIT_TESTS=OFF \
-  -DKDRIVE_DISABLE_SENTRY=OFF \
+  -DKDRIVE_DISABLE_SENTRY=ON \
   -DKDRIVE_USE_SYSTEM_QT=ON \
   -DKDRIVE_THEME_DIR="$WORKTREE_DIR/infomaniak" \
   -DCONAN_DEP_DIR="$CONAN_OUTPUT" \
@@ -87,6 +87,11 @@ version="$(awk '/KDRIVE_VERSION_FULL/ { gsub(/"/, "", $3); print $3; exit }' "$B
 mkdir -p -- "$RUNTIME_DIR/bin" "$RUNTIME_DIR/lib" "$RUNTIME_DIR/share" "$SYMBOL_DIR"
 cp -a "$BUILD_DIR/install/bin/kDrive" "$BUILD_DIR/install/bin/kDrive_client" "$BUILD_DIR/install/bin/sync-exclude.lst" "$RUNTIME_DIR/bin/"
 cp -a "$BUILD_DIR/install/share/applications" "$BUILD_DIR/install/share/icons" "$RUNTIME_DIR/share/"
+desktop_file="$RUNTIME_DIR/share/applications/kDrive_client.desktop"
+sed -i \
+  -e 's|^Exec=.*|Exec=kDrive %u|' \
+  -e 's|^MimeType=.*|MimeType=application/vnd.kDrive;x-scheme-handler/kdrive;|' \
+  "$desktop_file"
 for library in "$CONAN_OUTPUT"/lib*.so*; do cp -a "$library" "$RUNTIME_DIR/lib/"; done
 for binary in kDrive kDrive_client; do
   objcopy --only-keep-debug "$RUNTIME_DIR/bin/$binary" "$SYMBOL_DIR/$binary.dbg"
@@ -105,7 +110,7 @@ compiler=$(clang++ --version | head -n 1)
 qt=system-Qt6
 openssl=system-OpenSSL3
 host_requirements=qt6-base qt6-svg glib2 libsecret libzip curl c-ares openssl wayland
-sentry_policy=linked SDK, activation disabled by KDRIVE_SENTRY_ENVIRONMENT=; crashpad_handler omitted
+sentry_policy=linked SDK, compile-time activation disabled by KDRIVE_DISABLE_SENTRY=ON; crashpad_handler omitted
 lifecycle=systemd-user-only; native desktop autostart removed by source patch
 runtime_pruned=static archives, public headers, debug sections, crashpad helper
 EOF
