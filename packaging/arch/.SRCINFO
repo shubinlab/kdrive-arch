@@ -1,0 +1,26 @@
+pkgbase = kdrive-native-arch
+	pkgdesc = Native Arch Linux/CachyOS kDrive desktop client
+	pkgver = 3.8.7.1
+	pkgrel = 1
+	url = https://github.com/shubinlab/kdrive-arch
+	arch = x86_64
+	license = GPL-3.0-or-later
+	makedepends = clang
+	makedepends = cmake
+	makedepends = conan
+	makedepends = git
+	makedepends = python
+	depends = qt6-base
+	depends = qt6-svg
+	depends = glib2
+	depends = libsecret
+	depends = libzip
+	depends = curl
+	depends = c-ares
+	depends = openssl
+	depends = wayland
+	depends = systemd
+	source = desktop-kDrive::git+https://github.com/Infomaniak/desktop-kDrive.git#tag=3.8.7
+	sha256sums = SKIP
+
+pkgname = kdrive-native-arch

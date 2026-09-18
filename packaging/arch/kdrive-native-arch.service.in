@@ -1,0 +1,22 @@
+[Unit]
+Description=kDrive desktop synchronization client (native Arch package)
+Wants=network-online.target
+After=graphical-session.target network-online.target
+PartOf=graphical-session.target
+RequiresMountsFor=%h/.config/kDrive
+StartLimitIntervalSec=5min
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kdrive-native-arch
+ExecStartPre=/usr/bin/test -x /usr/bin/kdrive-native-arch
+Environment="KDRIVE_SENTRY_ENVIRONMENT="
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kdrive
+
+[Install]
+WantedBy=graphical-session.target

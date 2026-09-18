@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec /opt/kdrive-native-arch/@KDRIVE_VERSION@/bin/kDrive "$@"

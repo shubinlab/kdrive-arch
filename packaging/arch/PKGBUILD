@@ -1,0 +1,47 @@
+pkgname=kdrive-native-arch
+pkgver=3.8.7.1
+pkgrel=1
+pkgdesc='Native Arch Linux/CachyOS kDrive desktop client'
+arch=('x86_64')
+url='https://github.com/shubinlab/kdrive-arch'
+license=('GPL-3.0-or-later')
+depends=('qt6-base' 'qt6-svg' 'glib2' 'libsecret' 'libzip' 'curl' 'c-ares' 'openssl' 'wayland' 'systemd')
+makedepends=('clang' 'cmake' 'conan' 'git' 'python')
+source=('desktop-kDrive::git+https://github.com/Infomaniak/desktop-kDrive.git#tag=3.8.7')
+sha256sums=('SKIP')
+
+_tools="$startdir/../../infomaniak-build-tools/linux/arch-native"
+# The bundled kdrive-install.sh retains explicit --rollback for non-pacman installs.
+
+prepare() {
+  git -C "$srcdir/desktop-kDrive" submodule update --init --recursive
+}
+
+build() {
+  "$_tools/build-package.sh" \
+    --source "$srcdir/desktop-kDrive" \
+    --output "$srcdir/dist"
+}
+
+package() {
+  local bundle="$srcdir/dist/kdrive-${pkgver}-native-arch.tar.gz"
+  local root="$pkgdir/opt/kdrive-native-arch/$pkgver"
+
+  install -d "$root"
+  tar -xzf "$bundle" -C "$pkgdir/opt/kdrive-native-arch"
+  mv "$pkgdir/opt/kdrive-native-arch/kdrive-native-arch"/* "$root/"
+  rmdir "$pkgdir/opt/kdrive-native-arch/kdrive-native-arch"
+
+  install -d "$pkgdir/usr/bin" "$pkgdir/usr/lib/systemd/user"
+  sed "s/@KDRIVE_VERSION@/$pkgver/g" \
+    "$startdir/kdrive-native-arch.in" >"$pkgdir/usr/bin/kdrive-native-arch"
+  chmod 0755 "$pkgdir/usr/bin/kdrive-native-arch"
+
+  install -d "$pkgdir/usr/share/applications"
+  sed 's|^Exec=.*|Exec=/usr/bin/kdrive-native-arch %u|' \
+    "$root/share/applications/kDrive_client.desktop" >"$pkgdir/usr/share/applications/kDrive_client.desktop"
+  chmod 0644 "$pkgdir/usr/share/applications/kDrive_client.desktop"
+
+  install -m 0644 "$startdir/kdrive-native-arch.service.in" \
+    "$pkgdir/usr/lib/systemd/user/kdrive.service"
+}

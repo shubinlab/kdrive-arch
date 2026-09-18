@@ -1,4 +1,65 @@
-# Infomaniak kDrive app
+# kDrive Native Arch
+
+Native Arch Linux package for Infomaniak kDrive, built from the official
+Linux `3.8.7.1` source line for Arch Linux, CachyOS, and Omarchy.
+
+This exists for users who want a kDrive client that behaves like a native
+Arch application instead of an opaque AppImage:
+
+- user systemd is the only startup owner;
+- native desktop autostart is disabled;
+- runtime is `RelWithDebInfo`-built, stripped, and pruned of `.a` files,
+  public headers, debug sections, and Crashpad;
+- debug symbols are published separately for useful crash reports;
+- the default build has Sentry activation disabled at compile time;
+- every install is versioned and rollback-safe without touching kDrive account
+  databases or synchronized folders.
+
+This is a community Arch/CachyOS build, not an official Infomaniak binary.
+The package follows the upstream GPLv3 source and keeps the upstream remote
+available for security and release tracking.
+
+## Install on Arch or CachyOS
+
+```bash
+git clone --branch arch/stable-3.8.7.1 --recurse-submodules \
+  https://github.com/shubinlab/kdrive-arch.git
+cd kdrive-arch
+cd packaging/arch
+makepkg -Cfsri
+systemctl --user enable --now kdrive.service
+```
+
+The package installs a versioned runtime under `/opt/kdrive-native-arch/` and
+the user unit under `/usr/lib/systemd/user/kdrive.service`. It uses the host
+Qt6/OpenSSL ABI, so rebuilding with the target Arch/CachyOS system libraries
+is intentional. GUI/OAuth integration supports `kdrive://` browser callbacks;
+Wayland compositor and keyring behavior still depend on the host session.
+
+Use one lifecycle owner at a time: if the user-scoped archive installer is
+already active, stop/rollback that installation before enabling the pacman
+unit, because `~/.config/systemd/user/kdrive.service` intentionally takes
+precedence over `/usr/lib/systemd/user/kdrive.service`.
+
+For a user-scoped archive install, use
+`infomaniak-build-tools/linux/arch-native/kdrive-install.sh`. That path keeps
+the existing explicit rollback command:
+
+```bash
+./kdrive-install.sh --rollback
+```
+
+For a package rollback, install the previous saved `kdrive-native-arch` package
+with `pacman -U`; the versioned runtime directories remain independently
+addressable.
+
+## Build and verify the Arch package
+
+The canonical package metadata is [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD).
+The lower-level reproducible runtime builder and acceptance contract are in
+[`infomaniak-build-tools/linux/arch-native/Readme.md`](infomaniak-build-tools/linux/arch-native/Readme.md).
+
+## Upstream project
 
 [![Extended tests - All OS](https://github.com/Infomaniak/desktop-kDrive/actions/workflows/build-and-run-extended-tests.yml/badge.svg)](https://github.com/Infomaniak/desktop-kDrive/actions/workflows/build-and-run-extended-tests.yml)
 

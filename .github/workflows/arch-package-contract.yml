@@ -1,0 +1,40 @@
+name: Arch package contract
+
+on:
+  push:
+    paths:
+      - 'packaging/arch/**'
+      - 'infomaniak-build-tools/linux/arch-native/**'
+      - '.github/workflows/arch-package-contract.yml'
+  pull_request:
+    paths:
+      - 'packaging/arch/**'
+      - 'infomaniak-build-tools/linux/arch-native/**'
+      - '.github/workflows/arch-package-contract.yml'
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install metadata tools
+        run: pacman -Sy --noconfirm git
+      - name: Check shell and package metadata
+        run: |
+          bash -n packaging/arch/PKGBUILD \
+            packaging/arch/check-package.sh \
+            packaging/arch/tests/test-desktop-contract.sh \
+            packaging/arch/tests/test-pkgbuild-contract.sh \
+            infomaniak-build-tools/linux/arch-native/build-package.sh \
+            infomaniak-build-tools/linux/arch-native/install.sh
+          packaging/arch/tests/test-pkgbuild-contract.sh packaging/arch/PKGBUILD
+          makepkg --printsrcinfo --dir packaging/arch | diff -u packaging/arch/.SRCINFO -
+      - name: Check OAuth desktop contract
+        run: |
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Type=Application' \
+            'Exec=kDrive %u' \
+            'MimeType=x-scheme-handler/kdrive;' >/tmp/kdrive.desktop
+          packaging/arch/tests/test-desktop-contract.sh /tmp/kdrive.desktop
