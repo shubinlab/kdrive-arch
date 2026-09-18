@@ -95,7 +95,11 @@ sed -i \
   -e 's|^Exec=.*|Exec=kDrive %u|' \
   -e 's|^MimeType=.*|MimeType=application/vnd.kDrive;x-scheme-handler/kdrive;|' \
   "$desktop_file"
-for library in "$CONAN_OUTPUT"/lib*.so*; do cp -a "$library" "$RUNTIME_DIR/lib/"; done
+for library in "$CONAN_OUTPUT"/lib*.so*; do
+  target="$RUNTIME_DIR/lib/$(basename -- "$library")"
+  cp -a -- "$library" "$target"
+  strip --strip-unneeded "$target"
+done
 for binary in kDrive kDrive_client; do
   objcopy --only-keep-debug "$RUNTIME_DIR/bin/$binary" "$SYMBOL_DIR/$binary.dbg"
   objcopy --strip-debug "$RUNTIME_DIR/bin/$binary"

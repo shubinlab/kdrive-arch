@@ -1,7 +1,7 @@
 pkgbase = kdrive-native-arch
 	pkgdesc = Native Arch Linux/CachyOS kDrive desktop client
 	pkgver = 3.8.7.1
-	pkgrel = 6
+	pkgrel = 7
 	url = https://github.com/shubinlab/kdrive-arch
 	arch = x86_64
 	license = GPL-3.0-or-later
@@ -20,6 +20,7 @@ pkgbase = kdrive-native-arch
 	depends = openssl
 	depends = wayland
 	depends = systemd
+	options = !strip
 	options = !debug
 	source = desktop-kDrive::git+https://github.com/Infomaniak/desktop-kDrive.git#commit=b14222be555cc9f934e9ed2ec7bb36beb9c437a5
 	sha256sums = SKIP

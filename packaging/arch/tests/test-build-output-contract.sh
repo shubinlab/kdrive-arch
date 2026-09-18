@@ -19,3 +19,7 @@ grep -q -- "-DCMAKE_EXE_LINKER_FLAGS='-Wl,--disable-new-dtags'" "$builder" || {
   printf 'executable linker must emit transitive DT_RPATH\n' >&2
   exit 1
 }
+grep -q 'strip --strip-unneeded "\$target"' "$builder" || {
+  printf 'bundled shared libraries must be stripped before checksums\n' >&2
+  exit 1
+}
