@@ -23,3 +23,7 @@ grep -q 'strip --strip-unneeded "\$target"' "$builder" || {
   printf 'bundled shared libraries must be stripped before checksums\n' >&2
   exit 1
 }
+grep -q 'objcopy --strip-unneeded "\$RUNTIME_DIR/bin/\$binary"' "$builder" || {
+  printf 'runtime executables must be stripped before checksums\n' >&2
+  exit 1
+}

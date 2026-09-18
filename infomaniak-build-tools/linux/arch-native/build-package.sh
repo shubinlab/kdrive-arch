@@ -102,7 +102,7 @@ for library in "$CONAN_OUTPUT"/lib*.so*; do
 done
 for binary in kDrive kDrive_client; do
   objcopy --only-keep-debug "$RUNTIME_DIR/bin/$binary" "$SYMBOL_DIR/$binary.dbg"
-  objcopy --strip-debug "$RUNTIME_DIR/bin/$binary"
+  objcopy --strip-unneeded "$RUNTIME_DIR/bin/$binary"
   objcopy --add-gnu-debuglink="$SYMBOL_DIR/$binary.dbg" "$RUNTIME_DIR/bin/$binary"
 done
 rm -f -- "$RUNTIME_DIR/bin/crashpad_handler" "$RUNTIME_DIR/lib/libkeychain.a"
