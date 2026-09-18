@@ -27,3 +27,19 @@ grep -q 'objcopy --strip-unneeded "\$RUNTIME_DIR/bin/\$binary"' "$builder" || {
   printf 'runtime executables must be stripped before checksums\n' >&2
   exit 1
 }
+grep -q 'KDRIVE_CONAN_VERSION=' "$builder" || {
+  printf 'Conan version must be explicit\n' >&2
+  exit 1
+}
+grep -q 'remote add localrecipes' "$builder" || {
+  printf 'local Conan recipes must be registered explicitly\n' >&2
+  exit 1
+}
+grep -q -- '-r=localrecipes' "$builder" || {
+  printf 'Conan install must prefer the local recipe remote\n' >&2
+  exit 1
+}
+grep -q 'CONAN_HOME=' "$builder" || {
+  printf 'Conan must use an isolated home\n' >&2
+  exit 1
+}

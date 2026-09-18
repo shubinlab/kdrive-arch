@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 SOURCE_DIR=""
 OUTPUT_DIR=""
 CONAN_OUTPUT=""
+KDRIVE_CONAN_VERSION="${KDRIVE_CONAN_VERSION:-2.32.0}"
 
 die() { printf 'kdrive-build: %s\n' "$*" >&2; exit 1; }
 usage() {
@@ -29,7 +30,7 @@ done
 [[ -n "$SOURCE_DIR" && -n "$OUTPUT_DIR" ]] || { usage >&2; exit 2; }
 [[ -e "$SOURCE_DIR/.git" ]] || die 'source must be a git checkout with submodules'
 [[ -f "$SOURCE_DIR/src/3rdparty/keychain/src/keychain_linux.cpp" ]] || die 'submodules are not initialized'
-for command_name in cmake conan objcopy clang clang++ patch; do
+for command_name in cmake python objcopy clang clang++ patch; do
   command -v "$command_name" >/dev/null 2>&1 || die "required command not found: $command_name"
 done
 
@@ -37,6 +38,23 @@ SOURCE_DIR="$(cd -- "$SOURCE_DIR" && pwd -P)"
 OUTPUT_DIR="$(mkdir -p -- "$OUTPUT_DIR" && cd -- "$OUTPUT_DIR" && pwd -P)"
 CONAN_OUTPUT="$OUTPUT_DIR/conan"
 BUILD_DIR="$OUTPUT_DIR/build"
+CONAN_HOME="$OUTPUT_DIR/conan-home"
+CONAN_VENV="$OUTPUT_DIR/.conan-venv"
+
+if command -v conan >/dev/null 2>&1 && conan --version | grep -Fq "Conan version $KDRIVE_CONAN_VERSION"; then
+  CONAN_BIN="$(command -v conan)"
+else
+  if [[ ! -x "$CONAN_VENV/bin/conan" ]]; then
+    python -m venv "$CONAN_VENV" ||
+      die "cannot create isolated Conan environment; install python-pip"
+    "$CONAN_VENV/bin/python" -m pip install \
+      --disable-pip-version-check --no-input --upgrade \
+      "conan==$KDRIVE_CONAN_VERSION"
+  fi
+  CONAN_BIN="$CONAN_VENV/bin/conan"
+fi
+[[ -x "$CONAN_BIN" ]] || die "Conan $KDRIVE_CONAN_VERSION is unavailable"
+export CONAN_HOME
 
 git -C "$SOURCE_DIR" diff --quiet || die 'source checkout has local changes; use a clean tag checkout'
 git -C "$SOURCE_DIR" diff --cached --quiet || die 'source checkout has staged changes; use a clean tag checkout'
@@ -57,7 +75,10 @@ patch --directory="$WORKTREE_DIR" --batch --forward --strip=1 \
 
 export KDRIVE_USE_SYSTEM_QT=1
 export KDRIVE_OUTPUT_DIR="$CONAN_OUTPUT"
-conan install "$WORKTREE_DIR" --output-folder "$CONAN_OUTPUT" --build=missing \
+"$CONAN_BIN" remote add localrecipes "$WORKTREE_DIR/infomaniak-build-tools/conan" --force >/dev/null
+"$CONAN_BIN" remote add conancenter https://center2.conan.io --force >/dev/null
+"$CONAN_BIN" install "$WORKTREE_DIR" --output-folder "$CONAN_OUTPUT" --build=missing \
+  -r=localrecipes -r=conancenter \
   -s:h build_type=RelWithDebInfo -s:b build_type=RelWithDebInfo
 
 rm -rf -- "$BUILD_DIR"

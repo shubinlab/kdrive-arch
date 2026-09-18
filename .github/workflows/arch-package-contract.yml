@@ -3,13 +3,21 @@ name: Arch package contract
 on:
   push:
     paths:
-      - 'packaging/arch/**'
-      - 'infomaniak-build-tools/linux/arch-native/**'
+      - 'PKGBUILD'
+      - '.SRCINFO'
+      - 'build/**'
+      - 'tests/**'
+      - 'kdrive-native-arch.in'
+      - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
   pull_request:
     paths:
-      - 'packaging/arch/**'
-      - 'infomaniak-build-tools/linux/arch-native/**'
+      - 'PKGBUILD'
+      - '.SRCINFO'
+      - 'build/**'
+      - 'tests/**'
+      - 'kdrive-native-arch.in'
+      - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
 
 jobs:
@@ -22,17 +30,16 @@ jobs:
         run: pacman -Sy --noconfirm git
       - name: Check shell and package metadata
         run: |
-          bash -n packaging/arch/PKGBUILD \
-            packaging/arch/check-package.sh \
-            packaging/arch/tests/test-desktop-contract.sh \
-            packaging/arch/tests/test-build-output-contract.sh \
-            packaging/arch/tests/test-pkgbuild-contract.sh \
-            infomaniak-build-tools/linux/arch-native/build-package.sh \
-            infomaniak-build-tools/linux/arch-native/install.sh
-          packaging/arch/tests/test-pkgbuild-contract.sh packaging/arch/PKGBUILD
-          packaging/arch/tests/test-build-output-contract.sh \
-            infomaniak-build-tools/linux/arch-native/build-package.sh
-          makepkg --printsrcinfo --dir packaging/arch | diff -u packaging/arch/.SRCINFO -
+          bash -n PKGBUILD \
+            tests/check-package.sh \
+            tests/test-desktop-contract.sh \
+            tests/test-build-output-contract.sh \
+            tests/test-pkgbuild-contract.sh \
+            build/build-package.sh \
+            build/install.sh
+          tests/test-pkgbuild-contract.sh PKGBUILD
+          tests/test-build-output-contract.sh build/build-package.sh
+          makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
       - name: Check OAuth desktop contract
         run: |
           printf '%s\n' \
@@ -40,4 +47,4 @@ jobs:
             'Type=Application' \
             'Exec=kDrive %u' \
             'MimeType=x-scheme-handler/kdrive;' >/tmp/kdrive.desktop
-          packaging/arch/tests/test-desktop-contract.sh /tmp/kdrive.desktop
+          tests/test-desktop-contract.sh /tmp/kdrive.desktop
