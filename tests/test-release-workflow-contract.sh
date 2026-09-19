@@ -14,6 +14,10 @@ require() {
 
 require '^    container: archlinux:base-devel$' \
   'package build must run in the Arch base-devel container'
+require '^  build:$' 'release workflow must isolate the build job'
+require '^      contents: read$' 'build job must have read-only repository access'
+require '^  publish:$' 'release workflow must isolate the privileged publish job'
+require '^    needs: build$' 'publish job must consume only completed build artifacts'
 require 'runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild' \
   'release must build the pacman package from PKGBUILD as an unprivileged user'
 require 'makepkg --printsrcinfo.*diff -u \.SRCINFO' \
@@ -37,10 +41,14 @@ require 'gzip -n >release/kdrive-arch-source\.tar\.gz' \
 require 'release/install\.sh' 'release must publish the installer'
 require '>SHA256SUMS' 'release must generate checksums in the release directory'
 require 'sha256sum -c SHA256SUMS' 'release must verify its checksum manifest'
-require '^  id-token: write$' 'attestation needs OIDC permission'
-require '^  attestations: write$' 'attestation needs repository permission'
-require '^  artifact-metadata: write$' 'attestation needs artifact metadata permission'
+require '^[[:space:]]+id-token: write$' 'attestation needs OIDC permission'
+require '^[[:space:]]+attestations: write$' 'attestation needs repository permission'
+require '^[[:space:]]+artifact-metadata: write$' 'attestation needs artifact metadata permission'
 require 'uses: actions/checkout@[0-9a-f]{40}' 'checkout action must be pinned to a commit'
+require 'uses: actions/upload-artifact@[0-9a-f]{40}' \
+  'CI artifact upload must be pinned to a commit'
+require 'uses: actions/download-artifact@[0-9a-f]{40}' \
+  'CI artifact download must be pinned to a commit'
 require 'uses: actions/attest@[0-9a-f]{40}' 'attestation action must be pinned to a commit'
 require 'subject-path: release/' 'attestation subjects must be the staged release assets'
 require 'uses: softprops/action-gh-release@[0-9a-f]{40}' \
