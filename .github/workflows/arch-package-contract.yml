@@ -53,7 +53,11 @@ jobs:
           tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
-          chmod o+x "$(dirname "$GITHUB_WORKSPACE")" "$GITHUB_WORKSPACE"
+          workspace_path="$GITHUB_WORKSPACE"
+          while [[ "$workspace_path" != / ]]; do
+            chmod o+x "$workspace_path"
+            workspace_path="$(dirname "$workspace_path")"
+          done
           runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-installer-redteam.sh"
           runuser -u builder -- makepkg --printsrcinfo --dir "$GITHUB_WORKSPACE" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
       - name: Check OAuth desktop contract
