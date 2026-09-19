@@ -73,7 +73,8 @@ jobs:
           useradd --create-home --shell /bin/bash kdrive-ci
           install -m 0755 /bin/true /usr/bin/kdrive-arch
           su kdrive-ci -s /bin/bash -c 'tests/test-installer-redteam.sh'
-          makepkg --printsrcinfo --dir "$GITHUB_WORKSPACE" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
+          su kdrive-ci -s /bin/bash -c "makepkg --printsrcinfo --dir '$GITHUB_WORKSPACE'" |
+            diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
       - name: Check OAuth desktop contract
         run: |
           printf '%s\n' \
