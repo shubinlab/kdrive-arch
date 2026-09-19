@@ -16,7 +16,6 @@ for path in \
   .SRCINFO \
   install.sh \
   build/build-package.sh \
-  build/install.sh \
   build/arch-3.8.7.1.patch \
   tests/check-package.sh \
   tests/test-pkgbuild-contract.sh \

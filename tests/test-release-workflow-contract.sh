@@ -20,6 +20,8 @@ require '^  publish:$' 'release workflow must isolate the privileged publish job
 require '^    needs: build$' 'publish job must consume only completed build artifacts'
 require 'runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild' \
   'release must build the pacman package from PKGBUILD as an unprivileged user'
+require 'pacman -Syu --needed --noconfirm git' \
+  'Arch build container must install git before source archiving'
 require 'makepkg --printsrcinfo.*diff -u \.SRCINFO' \
   'release must reject stale package metadata before building'
 if grep -Eq '(^|[[:space:]])sudo([[:space:]]|$)' "$workflow"; then
@@ -27,7 +29,9 @@ if grep -Eq '(^|[[:space:]])sudo([[:space:]]|$)' "$workflow"; then
   exit 1
 fi
 require 'expected="kdrive-arch-\$\{pkgver\}-\$\{pkgrel\}"' \
-  'release tag must match the PKGBUILD package identity'
+  'kdrive release tag must match the PKGBUILD package identity'
+require 'expected="arch-\$\{pkgver\}-\$\{pkgrel\}"' \
+  'legacy arch release tag must match the PKGBUILD package identity'
 require 'kdrive-arch-\$\{pkgver\}-\$\{pkgrel\}-x86_64\.pkg\.tar\.zst' \
   'package asset name must include pkgver and pkgrel'
 require 'kdrive-arch-\$\{pkgver\}-\$\{pkgrel\}-debug\.tar\.gz' \

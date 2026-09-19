@@ -14,8 +14,10 @@ curl -fL https://github.com/shubinlab/kdrive-arch/releases/latest/download/insta
 
 The installer builds the latest verified release, installs `kdrive-arch`,
 migrates an older archive installation when present, enables `kdrive.service`,
-and preserves rollback state. It never removes kDrive account data, caches, or
-synchronized folders.
+and preserves rollback state. It stages source builds under `/var/tmp/kdrive-arch`
+on a local filesystem; set `KDRIVE_BUILD_ROOT` to another local volume when the
+machine has less than 8 GiB free there. It never removes kDrive account data,
+caches, or synchronized folders.
 
 ## Check or rollback
 

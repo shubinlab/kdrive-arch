@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install metadata tools
         run: pacman -Sy --noconfirm curl git
       - name: Check shell and package metadata
@@ -46,8 +46,7 @@ jobs:
             tests/test-package-name-contract.sh \
             tests/test-release-workflow-contract.sh \
             tests/test-installer-redteam.sh \
-            build/build-package.sh \
-            build/install.sh
+            build/build-package.sh
           tests/test-pkgbuild-contract.sh PKGBUILD
           tests/test-build-output-contract.sh build/build-package.sh
           tests/test-package-name-contract.sh
