@@ -8,6 +8,8 @@ LEGACY_PACKAGE_NAME=kdrive-native-arch
 STATE_HOME="${XDG_STATE_HOME:-${HOME}/.local/state}"
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 STATE_ROOT="${KDRIVE_INSTALL_ROOT:-${STATE_HOME}/kdrive-arch}"
+BUILD_ROOT="${KDRIVE_BUILD_ROOT:-/var/tmp/kdrive-arch}"
+MIN_BUILD_FREE_KIB=8388608
 PACKAGE_CACHE="${STATE_ROOT}/packages"
 BACKUP_ROOT="${STATE_ROOT}/backups"
 ACTION=install
@@ -15,9 +17,13 @@ START_SERVICE=1
 ASSUME_YES=0
 TEMP_ROOT=""
 SOURCE_ROOT=""
+PACKAGE_FILE=""
 BACKUP_DIR=""
 INSTALL_BACKUP_ACTIVE=0
 INSTALL_PACKAGE_ROLLBACK_PENDING=0
+PREVIOUS_SERVICE_ACTIVE=inactive
+PREVIOUS_SERVICE_ENABLED=disabled
+PREVIOUS_PACKAGE_NAME=""
 
 die() { printf 'kdrive-install: %s\n' "$*" >&2; exit 1; }
 say() { printf 'kdrive-install: %s\n' "$*"; }
@@ -67,10 +73,10 @@ preflight() {
   done
   case "$ACTION" in
     install)
-      for command_name in curl makepkg pacman tar; do need_command "$command_name"; done
+      for command_name in curl df findmnt makepkg pacman tar; do need_command "$command_name"; done
       ;;
     dry-run)
-      for command_name in curl tar; do need_command "$command_name"; done
+      for command_name in curl df findmnt tar; do need_command "$command_name"; done
       ;;
     rollback|uninstall|verify)
       need_command pacman
@@ -80,6 +86,33 @@ preflight() {
     systemctl --user show-environment >/dev/null 2>&1 ||
       die 'no user systemd session is available; run this from the graphical session'
   fi
+}
+
+prepare_temp_root() {
+  local filesystem available_kib required_free_kib=$MIN_BUILD_FREE_KIB
+  [[ "$ACTION" == install ]] || required_free_kib=524288
+  if [[ ! -e "$BUILD_ROOT" ]]; then
+    mkdir -m 0700 -- "$BUILD_ROOT" 2>/dev/null ||
+      die "build root cannot be created: $BUILD_ROOT"
+  fi
+  [[ -d "$BUILD_ROOT" && ! -L "$BUILD_ROOT" ]] ||
+    die "build root must be a directory, not a symlink: $BUILD_ROOT"
+  BUILD_ROOT="$(realpath -e "$BUILD_ROOT")"
+  filesystem="$(findmnt --noheadings --output FSTYPE --target "$BUILD_ROOT" 2>/dev/null | awk 'NR == 1 {print $1}')"
+  [[ -n "$filesystem" ]] || die "cannot identify build filesystem: $BUILD_ROOT"
+  case "$filesystem" in
+    nfs*|cifs|smb*|sshfs|fuse.sshfs|9p|ceph|glusterfs|davfs*|fuse.davfs)
+      die "build root must use a local filesystem, found $filesystem"
+      ;;
+  esac
+  available_kib="$(df -Pk "$BUILD_ROOT" 2>/dev/null | awk 'NR == 2 {print $4}')"
+  [[ "$available_kib" =~ ^[0-9]+$ ]] ||
+    die "cannot determine free space for build root: $BUILD_ROOT"
+  ((available_kib >= required_free_kib)) ||
+    die "build root needs at least $((required_free_kib / 1024)) MiB free: $BUILD_ROOT"
+  TEMP_ROOT="$(mktemp -d "$BUILD_ROOT/build.XXXXXXXX")" ||
+    die "build root is not writable: $BUILD_ROOT"
+  chmod 0700 "$TEMP_ROOT"
 }
 
 run_pacman() {
@@ -135,10 +168,15 @@ snapshot_user_state() {
   mkdir -m 0700 -- "$BACKUP_DIR"
   capture_path "$CONFIG_HOME/systemd/user/kdrive.service" "$BACKUP_DIR/kdrive.service.state"
   capture_path "$CONFIG_HOME/autostart/kDrive.desktop" "$BACKUP_DIR/kDrive.autostart.state"
-  printf '%s\n' "$(systemctl --user is-enabled kdrive.service 2>/dev/null || true)" >"$BACKUP_DIR/enabled"
-  printf '%s\n' "$(systemctl --user is-active kdrive.service 2>/dev/null || true)" >"$BACKUP_DIR/active"
+  PREVIOUS_SERVICE_ENABLED="$(systemctl --user is-enabled kdrive.service 2>/dev/null || true)"
+  PREVIOUS_SERVICE_ACTIVE="$(systemctl --user is-active kdrive.service 2>/dev/null || true)"
+  printf '%s\n' "$PREVIOUS_SERVICE_ENABLED" >"$BACKUP_DIR/enabled"
+  printf '%s\n' "$PREVIOUS_SERVICE_ACTIVE" >"$BACKUP_DIR/active"
+  INSTALL_BACKUP_ACTIVE=1
+  if [[ "$PREVIOUS_SERVICE_ACTIVE" == active ]]; then
+    systemctl --user stop kdrive.service
+  fi
   if [[ -e "$CONFIG_HOME/systemd/user/kdrive.service" ]]; then
-    systemctl --user disable --now kdrive.service >/dev/null 2>&1 || true
     rm -f -- "$CONFIG_HOME/systemd/user/kdrive.service"
   fi
   if [[ -e "$CONFIG_HOME/autostart/kDrive.desktop" ]]; then
@@ -226,6 +264,11 @@ installed_package_name() {
 
 find_cached_package() {
   local pattern="$1" cache_dir package
+  package="$(find "$PACKAGE_CACHE" -maxdepth 1 -type f -name "$pattern" -print -quit 2>/dev/null || true)"
+  if [[ -n "$package" ]]; then
+    printf '%s\n' "$package"
+    return 0
+  fi
   while IFS= read -r cache_dir; do
     cache_dir="${cache_dir%/}"
     [[ -d "$cache_dir" ]] || continue
@@ -246,6 +289,7 @@ save_previous_package() {
   local package_name version package
   package_name="$(installed_package_name || true)"
   [[ -n "$package_name" ]] || return 0
+  PREVIOUS_PACKAGE_NAME="$package_name"
   version="$(pacman -Q "$package_name" 2>/dev/null | awk '{print $2}' || true)"
   [[ -n "$version" ]] || return 0
   package="$(find_cached_package "${package_name}-${version}-*.pkg.tar.*" || true)"
@@ -253,20 +297,23 @@ save_previous_package() {
     install -m 0644 "$package" "$PACKAGE_CACHE/$(basename -- "$package")"
     printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$package")" >"$STATE_ROOT/previous-package"
     printf '%s\n' "$package_name" >"$STATE_ROOT/previous-package-name"
-  elif [[ "$package_name" == "$LEGACY_PACKAGE_NAME" ]]; then
-    die 'legacy kDrive package is installed but its cached archive is unavailable; refusing unsafe migration'
+  else
+    die "installed $package_name package archive is unavailable; refusing an update without rollback"
   fi
 }
 
-build_and_install() {
-  local package_file package_name
+build_package() {
   local -a args=(--syncdeps)
   ((ASSUME_YES)) && args+=(--noconfirm)
   if ! (cd "$SOURCE_ROOT" && makepkg "${args[@]}"); then
     return 1
   fi
-  package_file="$(find "$SOURCE_ROOT" -maxdepth 1 -type f -name 'kdrive-arch-*.pkg.tar.*' -print -quit)"
-  [[ -n "$package_file" ]] || die 'makepkg produced no kdrive-arch package'
+  PACKAGE_FILE="$(find "$SOURCE_ROOT" -maxdepth 1 -type f -name 'kdrive-arch-*.pkg.tar.*' -print -quit)"
+  [[ -n "$PACKAGE_FILE" ]] || die 'makepkg produced no kdrive-arch package'
+}
+
+install_built_package() {
+  local package_name
   package_name="$(installed_package_name || true)"
   if [[ "$package_name" == "$LEGACY_PACKAGE_NAME" ]]; then
     INSTALL_PACKAGE_ROLLBACK_PENDING=1
@@ -279,27 +326,44 @@ build_and_install() {
   INSTALL_PACKAGE_ROLLBACK_PENDING=1
   local -a install_args=(-U)
   ((ASSUME_YES)) && install_args+=(--noconfirm)
-  if ! run_pacman "${install_args[@]}" "$package_file"; then
+  if ! run_pacman "${install_args[@]}" "$PACKAGE_FILE"; then
     return 1
   fi
-  install -m 0644 "$package_file" "$PACKAGE_CACHE/$(basename -- "$package_file")"
-  printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$package_file")" >"$STATE_ROOT/current-package"
-  INSTALL_PACKAGE_ROLLBACK_PENDING=0
+  install -m 0644 "$PACKAGE_FILE" "$PACKAGE_CACHE/$(basename -- "$PACKAGE_FILE")"
+  printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$PACKAGE_FILE")" >"$STATE_ROOT/current-package"
 }
 
 restore_previous_package() {
-  local package
+  local package previous_name current_name
+  current_name="$(installed_package_name || true)"
+  if [[ -z "$PREVIOUS_PACKAGE_NAME" ]]; then
+    if [[ -n "$current_name" ]]; then
+      local -a remove_new_args=(-Rdd)
+      ((ASSUME_YES)) && remove_new_args+=(--noconfirm)
+      run_pacman "${remove_new_args[@]}" "$current_name" || true
+    fi
+    return 0
+  fi
   package="$(cat "$STATE_ROOT/previous-package" 2>/dev/null || true)"
   [[ -f "$package" ]] || return 0
+  previous_name="$(cat "$STATE_ROOT/previous-package-name" 2>/dev/null || true)"
+  if [[ -n "$previous_name" && -n "$current_name" && "$previous_name" != "$current_name" ]]; then
+    local -a remove_args=(-Rdd)
+    ((ASSUME_YES)) && remove_args+=(--noconfirm)
+    run_pacman "${remove_args[@]}" "$current_name" || true
+  fi
   local -a args=(-U)
   ((ASSUME_YES)) && args+=(--noconfirm)
-  run_pacman "${args[@]}" "$package" || true
+  if run_pacman "${args[@]}" "$package"; then
+    printf '%s\n' "$package" >"$STATE_ROOT/current-package"
+  fi
 }
 
 install_failure_trap() {
   local status="$?"
   trap - EXIT
   if ((INSTALL_BACKUP_ACTIVE)); then
+    systemctl --user stop kdrive.service >/dev/null 2>&1 || true
     if ((INSTALL_PACKAGE_ROLLBACK_PENDING)); then
       restore_previous_package || true
     fi
@@ -310,7 +374,7 @@ install_failure_trap() {
 }
 
 verify_runtime() {
-  local fragment launcher
+  local fragment launcher main_pid executable
   fragment="$(systemctl --user show kdrive.service -p FragmentPath --value 2>/dev/null || true)"
   [[ "$fragment" == /usr/lib/systemd/user/kdrive.service ]] ||
     die "unexpected kdrive.service owner: ${fragment:-none}"
@@ -321,7 +385,12 @@ verify_runtime() {
     die 'kdrive.service is not enabled'
   [[ "$(systemctl --user is-active kdrive.service 2>/dev/null || true)" == active ]] ||
     die 'kdrive.service is not active'
-  say 'verified: pacman package, systemd owner, enabled and active service'
+  main_pid="$(systemctl --user show kdrive.service -p MainPID --value 2>/dev/null || true)"
+  [[ "$main_pid" =~ ^[1-9][0-9]*$ ]] || die 'kdrive.service has no running main process'
+  executable="$(realpath -e "/proc/$main_pid/exe" 2>/dev/null || true)"
+  [[ "$executable" == /opt/kdrive-arch/* ]] ||
+    die "unexpected kDrive process executable: ${executable:-unavailable}"
+  say "verified: pacman package, systemd owner, enabled service, process $main_pid at $executable"
 }
 
 rollback() {
@@ -365,25 +434,32 @@ main() {
       uninstall
       ;;
     dry-run)
-      TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/kdrive-arch.XXXXXX")"
+      prepare_temp_root
       trap 'rm -rf -- "$TEMP_ROOT"' EXIT
       download_source
       say "verified latest release source at $SOURCE_ROOT"
       ;;
     install)
-      TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/kdrive-arch.XXXXXX")"
+      prepare_temp_root
       trap 'rm -rf -- "$TEMP_ROOT"' EXIT
-      snapshot_user_state
-      INSTALL_BACKUP_ACTIVE=1
-      trap 'install_failure_trap' EXIT
-      save_previous_package
       download_source
-      build_and_install
+      build_package
+      mkdir -p -- "$PACKAGE_CACHE"
+      save_previous_package
+      trap 'install_failure_trap' EXIT
+      snapshot_user_state
+      install_built_package
+      systemctl --user daemon-reload
       if ((START_SERVICE)); then
-        systemctl --user daemon-reload
-        systemctl --user enable --now kdrive.service
+        systemctl --user enable kdrive.service
+        if [[ "$PREVIOUS_SERVICE_ACTIVE" == active ]]; then
+          systemctl --user restart kdrive.service
+        else
+          systemctl --user start kdrive.service
+        fi
         verify_runtime
       fi
+      INSTALL_PACKAGE_ROLLBACK_PENDING=0
       INSTALL_BACKUP_ACTIVE=0
       rm -rf -- "$TEMP_ROOT"
       trap - EXIT
