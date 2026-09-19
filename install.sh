@@ -286,7 +286,7 @@ find_cached_package() {
 }
 
 save_previous_package() {
-  local package_name version package
+  local package_name version package destination package_real destination_real
   package_name="$(installed_package_name || true)"
   [[ -n "$package_name" ]] || return 0
   PREVIOUS_PACKAGE_NAME="$package_name"
@@ -294,8 +294,13 @@ save_previous_package() {
   [[ -n "$version" ]] || return 0
   package="$(find_cached_package "${package_name}-${version}-*.pkg.tar.*" || true)"
   if [[ -n "$package" ]]; then
-    install -m 0644 "$package" "$PACKAGE_CACHE/$(basename -- "$package")"
-    printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$package")" >"$STATE_ROOT/previous-package"
+    destination="$PACKAGE_CACHE/$(basename -- "$package")"
+    package_real="$(realpath -e -- "$package")"
+    destination_real="$(realpath -m -- "$destination")"
+    if [[ "$package_real" != "$destination_real" ]]; then
+      install -m 0644 "$package" "$destination"
+    fi
+    printf '%s\n' "$destination" >"$STATE_ROOT/previous-package"
     printf '%s\n' "$package_name" >"$STATE_ROOT/previous-package-name"
   else
     die "installed $package_name package archive is unavailable; refusing an update without rollback"

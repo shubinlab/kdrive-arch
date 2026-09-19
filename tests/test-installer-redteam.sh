@@ -386,8 +386,11 @@ grep -q -- '-U.*kdrive-native-arch-' "$tmp_root/pacman-log" || {
 run_active_install() {
   local suffix="$1"
   rm -f -- "$tmp_root/service-stopped" "$tmp_root/service-active" \
-    "$tmp_root/service-pid" "$tmp_root/restart-failed" "$tmp_root/current-package-name" \
+    "$tmp_root/service-pid" "$tmp_root/restart-failed" \
     "$tmp_root/mutation-log" "$tmp_root/realpath-log" "$tmp_root/pacman-log"
+  if [[ "${KDRIVE_KEEP_CURRENT_PACKAGE:-0}" != 1 ]]; then
+    rm -f -- "$tmp_root/current-package-name"
+  fi
   KDRIVE_ACTIVE_SERVICE=1 KDRIVE_LEGACY_MODE=1 KDRIVE_LEGACY_CACHE="$legacy_cache" \
     PATH="$bin_dir:/usr/bin:/bin" HOME="$home_dir" XDG_CONFIG_HOME="$config_dir" \
     XDG_STATE_HOME="$state_dir" KDRIVE_INSTALL_ROOT="$tmp_root/install-state-$suffix" \
@@ -408,6 +411,15 @@ restart_line="$(grep -n '^systemctl restart$' "$tmp_root/mutation-log" | head -n
 }
 grep -qx '/proc/4200/exe' "$tmp_root/realpath-log" || {
   printf 'active update did not verify the replacement process executable\n' >&2
+  exit 1
+}
+
+# A second update can discover the previous package in its own rollback cache.
+# It must not copy a file onto itself and abort before pacman transacts.
+run_active_install same-cache
+KDRIVE_KEEP_CURRENT_PACKAGE=1 run_active_install same-cache
+grep -q -- '-U.*kdrive-arch-' "$tmp_root/pacman-log" || {
+  printf 'same-cache update did not complete package installation\n' >&2
   exit 1
 }
 
