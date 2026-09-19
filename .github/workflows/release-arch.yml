@@ -38,15 +38,16 @@ jobs:
           mkdir -p -- "$build_root"
           cp -a -- "$GITHUB_WORKSPACE"/. "$build_root"/
           chown -R builder:builder "$build_root"
+          chmod -R a+rX "$build_root"
           printf 'BUILD_ROOT=%s\n' "$build_root" >>"$GITHUB_ENV"
 
       - name: Check repository contracts
         run: |
-          runuser -u builder -- "$BUILD_ROOT/tests/test-pkgbuild-contract.sh" "$BUILD_ROOT/PKGBUILD"
-          runuser -u builder -- "$BUILD_ROOT/tests/test-build-output-contract.sh" "$BUILD_ROOT/build/build-package.sh"
-          runuser -u builder -- "$BUILD_ROOT/tests/test-package-name-contract.sh"
-          runuser -u builder -- "$BUILD_ROOT/tests/test-repository-contract.sh"
-          runuser -u builder -- "$BUILD_ROOT/tests/test-release-workflow-contract.sh" "$BUILD_ROOT/.github/workflows/release-arch.yml"
+          "$BUILD_ROOT/tests/test-pkgbuild-contract.sh" "$BUILD_ROOT/PKGBUILD"
+          "$BUILD_ROOT/tests/test-build-output-contract.sh" "$BUILD_ROOT/build/build-package.sh"
+          "$BUILD_ROOT/tests/test-package-name-contract.sh"
+          "$BUILD_ROOT/tests/test-repository-contract.sh"
+          "$BUILD_ROOT/tests/test-release-workflow-contract.sh" "$BUILD_ROOT/.github/workflows/release-arch.yml"
           runuser -u builder -- makepkg --printsrcinfo --dir "$BUILD_ROOT" | diff -u "$BUILD_ROOT/.SRCINFO" -
 
       - name: Build package and debug symbols

@@ -42,6 +42,7 @@ jobs:
           mkdir -p -- "$workspace_root"
           cp -a -- "$GITHUB_WORKSPACE"/. "$workspace_root"/
           chown -R builder:builder "$workspace_root"
+          chmod -R a+rX "$workspace_root"
           bash -n PKGBUILD \
             tests/check-package.sh \
             tests/test-desktop-contract.sh \
