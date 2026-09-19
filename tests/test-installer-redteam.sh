@@ -44,6 +44,16 @@ run_dry_run() {
 make_release "$fixture/kdrive-arch"
 run_dry_run
 
+printf 'pkgname=unexpected-package\n' >"$fixture/kdrive-arch/PKGBUILD"
+make_release "$fixture/kdrive-arch"
+if run_dry_run 2>/dev/null; then
+  printf 'wrong package identity was accepted\n' >&2
+  exit 1
+fi
+
+printf 'pkgname=kdrive-arch\n' >"$fixture/kdrive-arch/PKGBUILD"
+make_release "$fixture/kdrive-arch"
+
 outside="$tmp_root/escape-marker"
 rm -f -- "$outside"
 tar -C "$fixture" --transform='s,^kdrive-arch,../escape,' \
@@ -62,6 +72,16 @@ ln -s /etc/passwd "$fixture/kdrive-arch/unsafe-link"
 make_release "$fixture/kdrive-arch"
 if run_dry_run 2>/dev/null; then
   printf 'symlink archive was accepted\n' >&2
+  exit 1
+fi
+
+rm -rf -- "$fixture/kdrive-arch"
+mkdir -p "$fixture/kdrive-arch"
+printf 'pkgname=kdrive-arch\n' >"$fixture/kdrive-arch/PKGBUILD"
+mkfifo "$fixture/kdrive-arch/unsafe-fifo"
+make_release "$fixture/kdrive-arch"
+if run_dry_run 2>/dev/null; then
+  printf 'special-file archive was accepted\n' >&2
   exit 1
 fi
 
@@ -128,7 +148,7 @@ EOF
 cat >"$bin_dir/makepkg" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-: >"$PWD/kdrive-arch-3.8.7.1-13-x86_64.pkg.tar.zst"
+: >"$PWD/kdrive-arch-3.8.7.1-15-x86_64.pkg.tar.zst"
 EOF
 chmod 0755 "$bin_dir"/*
 

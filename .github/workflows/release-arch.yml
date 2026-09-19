@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check package identity for new release tags
+        if: startsWith(github.ref, 'refs/tags/kdrive-arch-')
+        run: |
+          pkgver="$(awk -F= '$1 == "pkgver" {print $2; exit}' PKGBUILD)"
+          pkgrel="$(awk -F= '$1 == "pkgrel" {print $2; exit}' PKGBUILD)"
+          expected="kdrive-arch-${pkgver}-${pkgrel}"
+          test "$GITHUB_REF_NAME" = "$expected"
+
       - name: Build release assets
         run: |
           git archive --format=tar.gz --prefix=kdrive-arch/ HEAD > kdrive-arch-source.tar.gz

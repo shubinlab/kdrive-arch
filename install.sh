@@ -164,7 +164,7 @@ restore_user_state() {
 download_source() {
   local archive="$TEMP_ROOT/kdrive-arch-source.tar.gz"
   local sums="$TEMP_ROOT/SHA256SUMS"
-  local expected top
+  local expected top package_name
   curl -fL "$RELEASE_BASE_URL/kdrive-arch-source.tar.gz" -o "$archive"
   curl -fL "$RELEASE_BASE_URL/SHA256SUMS" -o "$sums"
   expected="$(awk '$2 == "kdrive-arch-source.tar.gz" || $2 == "*kdrive-arch-source.tar.gz" {print $1; exit}' "$sums")"
@@ -181,6 +181,9 @@ download_source() {
   source_real="$(realpath -e "$SOURCE_ROOT")"
   [[ "$source_real/" == "$temp_real/"* ]] || die 'release source escaped temporary directory'
   [[ -r "$SOURCE_ROOT/PKGBUILD" ]] || die 'release archive has no root PKGBUILD'
+  package_name="$(awk -F= '$1 == "pkgname" {gsub(/[[:space:]]/, "", $2); print $2; exit}' "$SOURCE_ROOT/PKGBUILD")"
+  [[ "$package_name" == "$PACKAGE_NAME" ]] ||
+    die "release PKGBUILD package identity is not $PACKAGE_NAME"
 }
 
 validate_release_archive() {
@@ -207,7 +210,8 @@ validate_release_archive() {
   done <"$listing"
   while IFS= read -r entry; do
     case "${entry:0:1}" in
-      l|h) die 'release archive symlinks and hardlinks are not allowed' ;;
+      d|-) ;;
+      *) die 'release archive contains a symlink, hardlink, or special file' ;;
     esac
   done <"$metadata"
 }
