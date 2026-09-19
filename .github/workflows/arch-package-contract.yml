@@ -72,6 +72,7 @@ jobs:
           tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
           useradd --create-home --shell /bin/bash kdrive-ci
           install -m 0755 /bin/true /usr/bin/kdrive-arch
+          chown -R kdrive-ci:kdrive-ci "$GITHUB_WORKSPACE"
           su kdrive-ci -s /bin/bash -c 'tests/test-installer-redteam.sh'
           su kdrive-ci -s /bin/bash -c "makepkg --printsrcinfo --dir '$GITHUB_WORKSPACE'" |
             diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
