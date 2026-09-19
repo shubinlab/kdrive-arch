@@ -70,7 +70,7 @@ jobs:
           tests/test-build-output-contract.sh build/build-package.sh
           tests/test-package-name-contract.sh
           tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
-          runuser -u nobody -- tests/test-installer-redteam.sh
+          su nobody -s /bin/bash -c 'tests/test-installer-redteam.sh'
           makepkg --printsrcinfo --dir "$GITHUB_WORKSPACE" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
       - name: Check OAuth desktop contract
         run: |
