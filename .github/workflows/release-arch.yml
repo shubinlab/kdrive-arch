@@ -34,6 +34,7 @@ jobs:
           pacman -Syu --needed --noconfirm git ripgrep "${build_dependencies[@]}"
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
+          chmod o+x "$(dirname "$GITHUB_WORKSPACE")" "$GITHUB_WORKSPACE"
 
       - name: Check repository contracts
         run: |
