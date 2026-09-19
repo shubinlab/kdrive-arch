@@ -54,6 +54,7 @@ jobs:
         run: pacman -Sy --noconfirm curl git ripgrep
       - name: Check shell and package metadata
         run: |
+          chmod +x install.sh build/*.sh tests/*.sh
           bash -n PKGBUILD \
             tests/check-package.sh \
             tests/test-desktop-contract.sh \

@@ -54,6 +54,7 @@ jobs:
             awk -F' = ' '/^\t(depends|makedepends) = / {print $2}' .SRCINFO | sort -u
           )
           pacman -Syu --needed --noconfirm git ripgrep "${build_dependencies[@]}"
+          chmod +x "$GITHUB_WORKSPACE/install.sh" "$GITHUB_WORKSPACE/build/"*.sh "$GITHUB_WORKSPACE/tests/"*.sh
           useradd --create-home builder
           build_root=/tmp/kdrive-workspace
           rm -rf -- "$build_root"
