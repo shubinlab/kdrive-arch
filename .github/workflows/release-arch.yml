@@ -8,12 +8,16 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    container: archlinux:base-devel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Check package identity for new release tags
         if: startsWith(github.ref, 'refs/tags/kdrive-arch-')
@@ -23,16 +27,61 @@ jobs:
           expected="kdrive-arch-${pkgver}-${pkgrel}"
           test "$GITHUB_REF_NAME" = "$expected"
 
-      - name: Build release assets
+      - name: Prepare Arch build environment
         run: |
-          git archive --format=tar.gz --prefix=kdrive-arch/ HEAD > kdrive-arch-source.tar.gz
-          sha256sum install.sh kdrive-arch-source.tar.gz > SHA256SUMS
+          mapfile -t build_dependencies < <(
+            awk -F' = ' '/^\t(depends|makedepends) = / {print $2}' .SRCINFO | sort -u
+          )
+          pacman -Syu --needed --noconfirm "${build_dependencies[@]}"
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Check repository contracts
+        run: |
+          runuser -u builder -- tests/test-pkgbuild-contract.sh PKGBUILD
+          runuser -u builder -- tests/test-build-output-contract.sh build/build-package.sh
+          runuser -u builder -- tests/test-package-name-contract.sh
+          runuser -u builder -- tests/test-repository-contract.sh
+          runuser -u builder -- tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
+          runuser -u builder -- makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
+
+      - name: Build package and debug symbols
+        run: runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild
+
+      - name: Stage deterministic release assets
+        shell: bash
+        run: |
+          pkgver="$(awk -F= '$1 == "pkgver" {print $2; exit}' PKGBUILD)"
+          pkgrel="$(awk -F= '$1 == "pkgrel" {print $2; exit}' PKGBUILD)"
+          package_asset="kdrive-arch-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
+          debug_source="src/dist/kdrive-${pkgver}-arch-debug.tar.gz"
+          debug_asset="kdrive-arch-${pkgver}-${pkgrel}-debug.tar.gz"
+
+          test -f "$package_asset"
+          test -f "$debug_source"
+          install -D -m 0644 "$package_asset" "release/$package_asset"
+          install -m 0644 "$debug_source" "release/$debug_asset"
+          install -m 0755 install.sh release/install.sh
+          runuser -u builder -- git archive --format=tar --prefix=kdrive-arch/ HEAD |
+            gzip -n >release/kdrive-arch-source.tar.gz
+          (
+            cd release
+            sha256sum \
+              "$package_asset" \
+              "$debug_asset" \
+              kdrive-arch-source.tar.gz \
+              install.sh >SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Attest release assets
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: release/*
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           generate_release_notes: true
-          files: |
-            install.sh
-            kdrive-arch-source.tar.gz
-            SHA256SUMS
+          fail_on_unmatched_files: true
+          files: release/*

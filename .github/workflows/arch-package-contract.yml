@@ -12,6 +12,7 @@ on:
       - 'kdrive-arch.in'
       - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
+      - '.github/workflows/release-arch.yml'
   pull_request:
     paths:
       - 'PKGBUILD'
@@ -23,6 +24,7 @@ on:
       - 'kdrive-arch.in'
       - 'kdrive.service'
       - '.github/workflows/arch-package-contract.yml'
+      - '.github/workflows/release-arch.yml'
 
 jobs:
   contract:
@@ -42,12 +44,14 @@ jobs:
             tests/test-repository-contract.sh \
             tests/test-installer-contract.sh \
             tests/test-package-name-contract.sh \
+            tests/test-release-workflow-contract.sh \
             tests/test-installer-redteam.sh \
             build/build-package.sh \
             build/install.sh
           tests/test-pkgbuild-contract.sh PKGBUILD
           tests/test-build-output-contract.sh build/build-package.sh
           tests/test-package-name-contract.sh
+          tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- tests/test-installer-redteam.sh
