@@ -7,7 +7,7 @@ options=('!strip' '!debug')
 url='https://github.com/shubinlab/kdrive-arch'
 license=('GPL-3.0-or-later')
 depends=('qt6-base' 'qt6-svg' 'glib2' 'libsecret' 'libzip' 'curl' 'c-ares' 'openssl' 'wayland' 'systemd')
-makedepends=('clang' 'cmake' 'git' 'python' 'python-pip')
+makedepends=('clang' 'cmake' 'git' 'python' 'python-pip' 'qt6-5compat')
 source=('desktop-kDrive::git+https://github.com/Infomaniak/desktop-kDrive.git#commit=b14222be555cc9f934e9ed2ec7bb36beb9c437a5')
 sha256sums=('SKIP')
 
