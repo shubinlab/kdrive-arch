@@ -166,8 +166,6 @@ for binary in kDrive kDrive_client; do
 done
 rm -f -- "$RUNTIME_DIR/bin/crashpad_handler" "$RUNTIME_DIR/lib/libkeychain.a"
 rm -rf -- "$RUNTIME_DIR/include"
-install -D -m 0644 "$SCRIPT_DIR/kdrive.service" "$RUNTIME_DIR/systemd/kdrive.service"
-install -D -m 0755 "$SCRIPT_DIR/install.sh" "$RUNTIME_DIR/kdrive-install.sh"
 cat >"$RUNTIME_DIR/MANIFEST" <<EOF
 package=kDrive-${version}-arch
 source_commit=$source_commit
@@ -177,12 +175,12 @@ qt=system-Qt6
 openssl=system-OpenSSL3
 host_requirements=qt6-base qt6-svg glib2 libsecret libzip curl c-ares openssl wayland
 sentry_policy=linked SDK, activation forced off at compile time by KDRIVE_DISABLE_SENTRY=ON; crashpad_handler omitted
-lifecycle=systemd-user-only; vendor desktop autostart removed by source patch
-runtime_pruned=static archives, public headers, debug sections, crashpad helper
+lifecycle=pacman-package-owned systemd-user-only; vendor desktop autostart removed by source patch
+runtime_pruned=static archives, public headers, debug sections, crashpad helper, installer, systemd unit
 EOF
 (
   cd -- "$RUNTIME_DIR"
-  sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst kdrive-install.sh systemd/kdrive.service
+  sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst
 ) >"$RUNTIME_DIR/SHA256SUMS"
 tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
   -czf "$OUTPUT_DIR/kdrive-${version}-arch.tar.gz" "$(basename "$RUNTIME_DIR")"

@@ -7,7 +7,7 @@ failures=0
 active_files=(
   PKGBUILD .SRCINFO README.md THIRD_PARTY_NOTICES.md
   kdrive-arch.in kdrive.service
-  build/build-package.sh build/install.sh build/kdrive.service
+  build/build-package.sh
   tests/test-pkgbuild-contract.sh
 )
 
@@ -23,6 +23,11 @@ grep -Eq '^pkgname=kdrive-arch$' "$root/PKGBUILD" || failures=$((failures + 1))
 grep -Eq 'kdrive-arch-[^ ]+\.pkg\.tar' "$root/install.sh" || failures=$((failures + 1))
 grep -Eq '^PACKAGE_NAME=kdrive-arch$' "$root/install.sh" || failures=$((failures + 1))
 grep -Eq 'LEGACY_PACKAGE_NAME=kdrive-native-arch' "$root/install.sh" || failures=$((failures + 1))
+if rg -n 'kdrive-install\.sh|RUNTIME_DIR.*/systemd/kdrive\.service' \
+  "$root/build/build-package.sh" "$root/PKGBUILD" >/dev/null; then
+  printf 'duplicate runtime launch path leaked into package build\n' >&2
+  failures=$((failures + 1))
+fi
 
 if ((failures)); then
   printf 'package name contract: %d failure(s)\n' "$failures" >&2

@@ -12,7 +12,6 @@ source=('desktop-kDrive::git+https://github.com/Infomaniak/desktop-kDrive.git#co
 sha256sums=('SKIP')
 
 _tools="$startdir/build"
-# The bundled kdrive-install.sh retains explicit --rollback for non-pacman installs.
 
 prepare() {
   git -C "$srcdir/desktop-kDrive" submodule update --init --recursive

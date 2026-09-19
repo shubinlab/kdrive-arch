@@ -11,6 +11,14 @@ grep -q 'SYMBOL_DIR="\$OUTPUT_DIR/kdrive-\${version}-arch-debug"' "$builder" || 
   printf 'debug prefix must include the built version\n' >&2
   exit 1
 }
+if grep -Fq '"$RUNTIME_DIR/kdrive-install.sh"' "$builder"; then
+  printf 'runtime bundle must not contain an installer\n' >&2
+  exit 1
+fi
+if grep -Fq '"$RUNTIME_DIR/systemd/kdrive.service"' "$builder"; then
+  printf 'runtime bundle must not contain a systemd unit\n' >&2
+  exit 1
+fi
 grep -q 'sha256sum bin/kDrive bin/kDrive_client bin/sync-exclude.lst' "$builder" || {
   printf 'SHA256SUMS must use relative runtime paths\n' >&2
   exit 1
