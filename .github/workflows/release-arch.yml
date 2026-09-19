@@ -43,12 +43,12 @@ jobs:
 
       - name: Check repository contracts
         run: |
-          "$BUILD_ROOT/tests/test-pkgbuild-contract.sh" "$BUILD_ROOT/PKGBUILD"
-          "$BUILD_ROOT/tests/test-build-output-contract.sh" "$BUILD_ROOT/build/build-package.sh"
-          "$BUILD_ROOT/tests/test-package-name-contract.sh"
-          "$BUILD_ROOT/tests/test-repository-contract.sh"
-          "$BUILD_ROOT/tests/test-release-workflow-contract.sh" "$BUILD_ROOT/.github/workflows/release-arch.yml"
-          runuser -u builder -- makepkg --printsrcinfo --dir "$BUILD_ROOT" | diff -u "$BUILD_ROOT/.SRCINFO" -
+          "$GITHUB_WORKSPACE/tests/test-pkgbuild-contract.sh" "$GITHUB_WORKSPACE/PKGBUILD"
+          "$GITHUB_WORKSPACE/tests/test-build-output-contract.sh" "$GITHUB_WORKSPACE/build/build-package.sh"
+          "$GITHUB_WORKSPACE/tests/test-package-name-contract.sh"
+          "$GITHUB_WORKSPACE/tests/test-repository-contract.sh"
+          "$GITHUB_WORKSPACE/tests/test-release-workflow-contract.sh" "$GITHUB_WORKSPACE/.github/workflows/release-arch.yml"
+          runuser -u builder -- makepkg --printsrcinfo --dir "$BUILD_ROOT" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
 
       - name: Build package and debug symbols
         run: runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild --dir "$BUILD_ROOT"
@@ -69,7 +69,7 @@ jobs:
           install -D -m 0644 "$package_asset" "$GITHUB_WORKSPACE/release/$(basename "$package_asset")"
           install -m 0644 "$debug_source" "$GITHUB_WORKSPACE/release/$debug_asset"
           install -m 0755 "$BUILD_ROOT/install.sh" "$GITHUB_WORKSPACE/release/install.sh"
-          runuser -u builder -- git -C "$BUILD_ROOT" archive --format=tar --prefix=kdrive-arch/ HEAD |
+          git -C "$GITHUB_WORKSPACE" archive --format=tar --prefix=kdrive-arch/ HEAD |
             gzip -n >"$GITHUB_WORKSPACE/release/kdrive-arch-source.tar.gz"
           (
             cd "$GITHUB_WORKSPACE/release"
