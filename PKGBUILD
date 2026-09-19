@@ -1,6 +1,6 @@
 pkgname=kdrive-arch
 pkgver=3.8.7.1
-pkgrel=16
+pkgrel=17
 pkgdesc='Arch Linux/CachyOS kDrive desktop client'
 arch=('x86_64')
 options=('!strip' '!debug')

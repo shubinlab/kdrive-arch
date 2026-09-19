@@ -224,13 +224,31 @@ installed_package_name() {
   fi
 }
 
+find_cached_package() {
+  local pattern="$1" cache_dir package
+  while IFS= read -r cache_dir; do
+    cache_dir="${cache_dir%/}"
+    [[ -d "$cache_dir" ]] || continue
+    package="$(find "$cache_dir" -maxdepth 1 -type f -name "$pattern" -print -quit 2>/dev/null || true)"
+    if [[ -n "$package" ]]; then
+      printf '%s\n' "$package"
+      return 0
+    fi
+  done < <(
+    if command -v pacman-conf >/dev/null 2>&1; then
+      pacman-conf CacheDir 2>/dev/null || true
+    fi
+    printf '/var/cache/pacman/pkg\n'
+  )
+}
+
 save_previous_package() {
   local package_name version package
   package_name="$(installed_package_name || true)"
   [[ -n "$package_name" ]] || return 0
   version="$(pacman -Q "$package_name" 2>/dev/null | awk '{print $2}' || true)"
   [[ -n "$version" ]] || return 0
-  package="$(find /var/cache/pacman/pkg -maxdepth 1 -type f -name "${package_name}-${version}-*.pkg.tar.*" -print -quit 2>/dev/null || true)"
+  package="$(find_cached_package "${package_name}-${version}-*.pkg.tar.*" || true)"
   if [[ -n "$package" ]]; then
     install -m 0644 "$package" "$PACKAGE_CACHE/$(basename -- "$package")"
     printf '%s\n' "$PACKAGE_CACHE/$(basename -- "$package")" >"$STATE_ROOT/previous-package"

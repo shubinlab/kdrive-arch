@@ -134,11 +134,16 @@ EOF
 cat >"$bin_dir/find" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-if [[ "${1:-}" == /var/cache/pacman/pkg && -n "${KDRIVE_LEGACY_CACHE:-}" ]]; then
+if [[ -n "${KDRIVE_LEGACY_CACHE:-}" && "${1:-}" == "$KDRIVE_LEGACY_CACHE" ]]; then
   printf '%s\n' "$KDRIVE_LEGACY_CACHE/kdrive-native-arch-3.8.7.1-12-x86_64.pkg.tar.zst"
   exit 0
 fi
 exec /usr/bin/find "$@"
+EOF
+cat >"$bin_dir/pacman-conf" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+printf '%s/\n' "${KDRIVE_LEGACY_CACHE:-/var/cache/pacman/pkg}"
 EOF
 cat >"$bin_dir/sudo" <<'EOF'
 #!/usr/bin/env bash
@@ -148,7 +153,7 @@ EOF
 cat >"$bin_dir/makepkg" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-: >"$PWD/kdrive-arch-3.8.7.1-16-x86_64.pkg.tar.zst"
+: >"$PWD/kdrive-arch-3.8.7.1-17-x86_64.pkg.tar.zst"
 EOF
 chmod 0755 "$bin_dir"/*
 
