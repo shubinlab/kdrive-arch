@@ -188,4 +188,8 @@ tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --
   -czf "$OUTPUT_DIR/kdrive-${version}-arch.tar.gz" "$(basename "$RUNTIME_DIR")"
 tar -C "$OUTPUT_DIR" --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
   -czf "$OUTPUT_DIR/kdrive-${version}-arch-debug.tar.gz" "$(basename "$SYMBOL_DIR")"
+(
+  cd "$OUTPUT_DIR"
+  sha256sum "kdrive-${version}-arch.tar.gz" "kdrive-${version}-arch-debug.tar.gz"
+) >"$OUTPUT_DIR/SHA256SUMS"
 printf 'kDrive build complete: %s\n' "$OUTPUT_DIR/kdrive-${version}-arch.tar.gz"

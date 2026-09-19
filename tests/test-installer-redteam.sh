@@ -148,7 +148,7 @@ EOF
 cat >"$bin_dir/makepkg" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-: >"$PWD/kdrive-arch-3.8.7.1-15-x86_64.pkg.tar.zst"
+: >"$PWD/kdrive-arch-3.8.7.1-16-x86_64.pkg.tar.zst"
 EOF
 chmod 0755 "$bin_dir"/*
 

@@ -28,7 +28,8 @@ The package runtime is `RelWithDebInfo`. Static archives, public headers,
 debug sections, and the Crashpad helper are removed from runtime; debug symbols
 are emitted as a separate bundle. The Sentry SDK remains linked for ABI compatibility,
 but activation is disabled at compile time and the unit clears Sentry
-environment variables.
+environment variables. Runtime and debug bundles receive a shared SHA256
+manifest.
 
 ## Manual package build
 
