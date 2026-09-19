@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install metadata tools
-        run: pacman -Sy --noconfirm curl git
+        run: pacman -Sy --noconfirm curl git ripgrep
       - name: Check shell and package metadata
         run: |
           bash -n PKGBUILD \
@@ -53,8 +53,8 @@ jobs:
           tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
-          runuser -u builder -- tests/test-installer-redteam.sh
-          runuser -u builder -- makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
+          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-installer-redteam.sh"
+          runuser -u builder -- makepkg --printsrcinfo --dir "$GITHUB_WORKSPACE" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
       - name: Check OAuth desktop contract
         run: |
           printf '%s\n' \

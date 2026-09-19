@@ -31,21 +31,21 @@ jobs:
           mapfile -t build_dependencies < <(
             awk -F' = ' '/^\t(depends|makedepends) = / {print $2}' .SRCINFO | sort -u
           )
-          pacman -Syu --needed --noconfirm git "${build_dependencies[@]}"
+          pacman -Syu --needed --noconfirm git ripgrep "${build_dependencies[@]}"
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Check repository contracts
         run: |
-          runuser -u builder -- tests/test-pkgbuild-contract.sh PKGBUILD
-          runuser -u builder -- tests/test-build-output-contract.sh build/build-package.sh
-          runuser -u builder -- tests/test-package-name-contract.sh
-          runuser -u builder -- tests/test-repository-contract.sh
-          runuser -u builder -- tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
-          runuser -u builder -- makepkg --printsrcinfo --dir . | diff -u .SRCINFO -
+          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-pkgbuild-contract.sh" "$GITHUB_WORKSPACE/PKGBUILD"
+          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-build-output-contract.sh" "$GITHUB_WORKSPACE/build/build-package.sh"
+          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-package-name-contract.sh"
+          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-repository-contract.sh"
+          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-release-workflow-contract.sh" "$GITHUB_WORKSPACE/.github/workflows/release-arch.yml"
+          runuser -u builder -- makepkg --printsrcinfo --dir "$GITHUB_WORKSPACE" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
 
       - name: Build package and debug symbols
-        run: runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild
+        run: runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild --dir "$GITHUB_WORKSPACE"
 
       - name: Stage deterministic release assets
         shell: bash
@@ -61,7 +61,7 @@ jobs:
           install -D -m 0644 "$package_asset" "release/$package_asset"
           install -m 0644 "$debug_source" "release/$debug_asset"
           install -m 0755 install.sh release/install.sh
-          runuser -u builder -- git archive --format=tar --prefix=kdrive-arch/ HEAD |
+          runuser -u builder -- git -C "$GITHUB_WORKSPACE" archive --format=tar --prefix=kdrive-arch/ HEAD |
             gzip -n >release/kdrive-arch-source.tar.gz
           (
             cd release

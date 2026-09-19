@@ -18,11 +18,11 @@ require '^  build:$' 'release workflow must isolate the build job'
 require '^      contents: read$' 'build job must have read-only repository access'
 require '^  publish:$' 'release workflow must isolate the privileged publish job'
 require '^    needs: build$' 'publish job must consume only completed build artifacts'
-require 'runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild' \
+require 'runuser -u builder -- env HOME=/home/builder makepkg --noconfirm --cleanbuild --dir' \
   'release must build the pacman package from PKGBUILD as an unprivileged user'
 require 'pacman -Syu --needed --noconfirm git' \
   'Arch build container must install git before source archiving'
-require 'makepkg --printsrcinfo.*diff -u \.SRCINFO' \
+require 'makepkg --printsrcinfo.*diff -u.*\.SRCINFO' \
   'release must reject stale package metadata before building'
 if grep -Eq '(^|[[:space:]])sudo([[:space:]]|$)' "$workflow"; then
   printf 'release workflow: builder must not receive sudo access\n' >&2
@@ -38,7 +38,7 @@ require 'kdrive-arch-\$\{pkgver\}-\$\{pkgrel\}-debug\.tar\.gz' \
   'debug asset name must include pkgver and pkgrel'
 require 'kdrive-arch-source\.tar\.gz' \
   'release must retain the installer-compatible source asset name'
-require 'git archive --format=tar --prefix=kdrive-arch/ HEAD' \
+require 'git -C .* archive --format=tar --prefix=kdrive-arch/ HEAD' \
   'source archive must retain the installer-validated root'
 require 'gzip -n >release/kdrive-arch-source\.tar\.gz' \
   'source archive gzip header must be deterministic'
