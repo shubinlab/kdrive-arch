@@ -54,6 +54,13 @@ while (($#)); do
   esac
 done
 
+# A curl-piped installer has no stdin TTY, so pacman/makepkg must not wait for
+# a confirmation that can never arrive. Direct terminal runs remain prompted
+# unless the caller explicitly supplies --yes.
+if [[ "$ACTION" == install && ! -t 0 ]]; then
+  ASSUME_YES=1
+fi
+
 need_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }

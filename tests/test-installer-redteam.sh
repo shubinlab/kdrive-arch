@@ -274,7 +274,7 @@ run_install() {
     HOME="$home_dir" XDG_CONFIG_HOME="$config_dir" XDG_STATE_HOME="$state_dir" \
     KDRIVE_INSTALL_ROOT="$tmp_root/install-state-$suffix" KDRIVE_REDTEAM_ROOT="$tmp_root" \
     KDRIVE_RELEASE_BASE_URL="file://$release" KDRIVE_BUILD_ROOT="$tmp_root/build-root" \
-    bash "$installer" --no-start --yes >/dev/null
+    bash "$installer" --no-start </dev/null >/dev/null
 }
 
 run_install normal
@@ -395,7 +395,7 @@ run_active_install() {
     PATH="$bin_dir:/usr/bin:/bin" HOME="$home_dir" XDG_CONFIG_HOME="$config_dir" \
     XDG_STATE_HOME="$state_dir" KDRIVE_INSTALL_ROOT="$tmp_root/install-state-$suffix" \
     KDRIVE_REDTEAM_ROOT="$tmp_root" KDRIVE_RELEASE_BASE_URL="file://$release" \
-    KDRIVE_BUILD_ROOT="$tmp_root/build-root" bash "$installer" --yes >/dev/null
+    KDRIVE_BUILD_ROOT="$tmp_root/build-root" bash "$installer" </dev/null >/dev/null
 }
 
 printf 'old-unit\n' >"$config_dir/systemd/user/kdrive.service"

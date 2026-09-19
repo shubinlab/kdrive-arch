@@ -12,6 +12,10 @@ one user systemd unit.
 curl -fL https://github.com/shubinlab/kdrive-arch/releases/latest/download/install.sh | bash
 ```
 
+When run through this pipe, the installer detects the non-interactive stdin
+and supplies the required pacman/makepkg confirmation internally; no extra
+shell arguments are needed. A direct terminal invocation remains prompted.
+
 The installer builds the latest verified release, installs `kdrive-arch`,
 migrates an older archive installation when present, enables `kdrive.service`,
 and preserves rollback state. It stages source builds under `/var/tmp/kdrive-arch`
