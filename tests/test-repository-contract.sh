@@ -24,11 +24,13 @@ for path in \
   require_file "$path"
 done
 
-if git -C "$root" ls-files | rg -i \
-  '(^|/)(swift|macos|ios|android|windows|win32|xcode)(/|$)|\.swift$|\.mm$|\.xcodeproj' \
-  >/dev/null; then
-  printf 'UNEXPECTED non-Arch platform source in active tree\n' >&2
-  failures=$((failures + 1))
+if git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if git -C "$root" ls-files | rg -i \
+    '(^|/)(swift|macos|ios|android|windows|win32|xcode)(/|$)|\.swift$|\.mm$|\.xcodeproj' \
+    >/dev/null; then
+    printf 'UNEXPECTED non-Arch platform source in active tree\n' >&2
+    failures=$((failures + 1))
+  fi
 fi
 
 for path in packaging/arch infomaniak-build-tools src; do
