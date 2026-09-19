@@ -36,6 +36,12 @@ jobs:
         run: pacman -Sy --noconfirm curl git ripgrep
       - name: Check shell and package metadata
         run: |
+          useradd --create-home builder
+          workspace_root=/tmp/kdrive-contract
+          rm -rf -- "$workspace_root"
+          mkdir -p -- "$workspace_root"
+          cp -a -- "$GITHUB_WORKSPACE"/. "$workspace_root"/
+          chown -R builder:builder "$workspace_root"
           bash -n PKGBUILD \
             tests/check-package.sh \
             tests/test-desktop-contract.sh \
@@ -51,15 +57,8 @@ jobs:
           tests/test-build-output-contract.sh build/build-package.sh
           tests/test-package-name-contract.sh
           tests/test-release-workflow-contract.sh .github/workflows/release-arch.yml
-          useradd --create-home builder
-          chown -R builder:builder "$GITHUB_WORKSPACE"
-          workspace_path="$GITHUB_WORKSPACE"
-          while [[ "$workspace_path" != / ]]; do
-            chmod o+x "$workspace_path"
-            workspace_path="$(dirname "$workspace_path")"
-          done
-          runuser -u builder -- "$GITHUB_WORKSPACE/tests/test-installer-redteam.sh"
-          runuser -u builder -- makepkg --printsrcinfo --dir "$GITHUB_WORKSPACE" | diff -u "$GITHUB_WORKSPACE/.SRCINFO" -
+          runuser -u builder -- "$workspace_root/tests/test-installer-redteam.sh"
+          runuser -u builder -- makepkg --printsrcinfo --dir "$workspace_root" | diff -u "$workspace_root/.SRCINFO" -
       - name: Check OAuth desktop contract
         run: |
           printf '%s\n' \

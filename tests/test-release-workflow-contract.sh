@@ -40,7 +40,7 @@ require 'kdrive-arch-source\.tar\.gz' \
   'release must retain the installer-compatible source asset name'
 require 'git -C .* archive --format=tar --prefix=kdrive-arch/ HEAD' \
   'source archive must retain the installer-validated root'
-require 'gzip -n >release/kdrive-arch-source\.tar\.gz' \
+require 'gzip -n >.*release/kdrive-arch-source\.tar\.gz' \
   'source archive gzip header must be deterministic'
 require 'release/install\.sh' 'release must publish the installer'
 require '>SHA256SUMS' 'release must generate checksums in the release directory'
